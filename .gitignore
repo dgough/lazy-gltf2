@@ -1,3 +1,8 @@
+# Directories
+.vs/
+x64/
+external-deps/
+
 # Prerequisites
 *.d
 
