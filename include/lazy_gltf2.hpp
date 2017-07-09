@@ -49,8 +49,16 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Gltf;
     class Channel;
 
-    using JsonDocument = rapidjson::Document;
-    using JsonValue = rapidjson::Document::GenericValue;
+    struct FileCloser {
+        void operator()(FILE* fp) {
+            if (fp != nullptr) {
+                ::std::fclose(fp);
+            }
+        }
+    };
+    using JsonDocument = ::rapidjson::Document;
+    using JsonValue = ::rapidjson::Document::GenericValue;
+    using unique_file_ptr = ::std::unique_ptr<FILE, FileCloser>;
 
     /// Animation target path.
     enum class TargetPath {
@@ -73,6 +81,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     static constexpr std::uint32_t MAGIC = 0x46546C67;
     static constexpr std::uint32_t JSON_CHUNK_TYPE = 0x4E4F534A;
     static constexpr std::uint32_t BINARY_CHUNK_TYPE = 0x004E4942;
+    static constexpr char* DATA_APP_BASE64 = "data:application/octet-stream;base64,";
 
     namespace GLValue {
         enum {
@@ -103,14 +112,13 @@ namespace LAZY_GLTF2_NAMESPACE {
         };
     }
 
-
     /// Class that holds the GLB meta data.
     class GlbData {
     public:
         std::string path;
         std::uint32_t chunkLength;
         std::uint32_t offset;
-        std::vector<char> data;
+        std::vector<unsigned char> data; // TODO remove
         GlbData() = default;
         ~GlbData() = default;
         // Support moving
@@ -235,10 +243,19 @@ namespace LAZY_GLTF2_NAMESPACE {
 
         Asset asset() const noexcept;
 
+        /// Finds a node by name.
+        Node findNode(const char* name);
+        Mesh findMesh(const char* name);
+        Skin findSkin(const char* name);
+        Material findMaterial(const char* name);
+
         /// Returns a pointer to the json document. May be null.
         const JsonDocument* doc() const noexcept {
             return m_doc.get();
         }
+
+        // TODO friend operator==
+        friend class Buffer;
 
     private:
 
@@ -252,7 +269,26 @@ namespace LAZY_GLTF2_NAMESPACE {
             return 0;
         }
 
+        template<typename T>
+        T findByName(const char* key, const char* name) {
+            const auto& it = m_doc->FindMember(key);
+            if (name != nullptr && it != m_doc->MemberEnd() && it->value.IsArray()) {
+                const auto size = it->value.Size();
+                for (size_t i = 0; i < size; ++i) {
+                    const auto& v = it->value[i];
+                    const auto& nameIt = v.FindMember("name");
+                    if (nameIt != v.MemberEnd() && nameIt->value.IsString()) {
+                        if (strcmp(name, nameIt->value.GetString()) == 0) {
+                            return T(this, &v);
+                        }
+                    }
+                }
+            }
+            return T();
+        }
+
         bool loadGlb(const char* path);
+        bool loadGlbData() const noexcept;
 
         void clear() noexcept {
             m_doc.reset(nullptr);
@@ -267,6 +303,17 @@ namespace LAZY_GLTF2_NAMESPACE {
 
     static inline char lowercase(char ch) {
         return ch >= 'A' && ch <= 'Z' ? ch | 0x20 : ch;
+    }
+
+    /// Returns true if subject starts with prefix.
+    inline bool startsWith(const char* subject, const char* prefix) {
+        if (subject == prefix) {
+            return true;
+        }
+        if (subject == nullptr || prefix == nullptr) {
+            return false;
+        }
+        return strncmp(prefix, subject, strlen(prefix)) == 0;
     }
 
     template<typename T>
@@ -450,6 +497,7 @@ namespace LAZY_GLTF2_NAMESPACE {
             }
             return nullptr;
         }
+        friend bool operator==(const Object& lhs, const Object& rhs);
     protected:
         /// Returns the size of an array or the number of members in an object.
         size_t count(const char* key) const noexcept {
@@ -503,6 +551,14 @@ namespace LAZY_GLTF2_NAMESPACE {
         const Gltf* m_gltf;
         const JsonValue* m_json;
     };
+
+    inline bool operator==(const Object& lhs, const Object& rhs) {
+        return lhs.m_gltf == rhs.m_gltf && lhs.m_json == rhs.m_json;
+    }
+
+    inline bool operator!=(const Object& lhs, const Object& rhs) {
+        return !(lhs == rhs);
+    }
 
     /// A gltf object that has a string name.
     class Named : public Object {
@@ -688,6 +744,8 @@ namespace LAZY_GLTF2_NAMESPACE {
         size_t byteLength() const noexcept {
             return findNumberOrDefault<size_t>(m_json, "byteLength", 0);
         }
+        template<typename T>
+        bool load(std::vector<T>& data) const noexcept;
         // TODO method to get values regardless of location
     };
 
@@ -1553,7 +1611,7 @@ namespace LAZY_GLTF2_NAMESPACE {
         if (lowercase(path[len - 1]) == 'b') { // .glb
             return loadGlb(path);
         }
-        std::unique_ptr<FILE, int(*)(FILE*)> file(fopen(path, "rb"), &std::fclose);
+        unique_file_ptr file(fopen(path, "rb"));
         FILE* fp = file.get();
         if (!fp) {
             return false;
@@ -1643,8 +1701,24 @@ namespace LAZY_GLTF2_NAMESPACE {
         return Asset();
     }
 
+    inline Node Gltf::findNode(const char* name) {
+        return findByName<Node>("nodes", name);
+    }
+
+    inline Mesh Gltf::findMesh(const char* name) {
+        return findByName<Mesh>("meshes", name);
+    }
+
+    inline Skin Gltf::findSkin(const char* name) {
+        return findByName<Skin>("skins", name);
+    }
+
+    inline Material Gltf::findMaterial(const char* name) {
+        return findByName<Material>("materials", name);
+    }
+
     inline bool Gltf::loadGlb(const char* path) {
-        std::unique_ptr<FILE, int(*)(FILE*)> file(fopen(path, "rb"), &std::fclose);
+        unique_file_ptr file(fopen(path, "rb"));
         FILE* fp = file.get();
         if (!fp) {
             return false;
@@ -1691,6 +1765,33 @@ namespace LAZY_GLTF2_NAMESPACE {
         return false;
     }
 
+    inline bool Gltf::loadGlbData() const noexcept {
+        if (m_glb) {
+            if (!m_glb->data.empty()) {
+                // already loaded
+                return true;
+            }
+            const auto& chunkLength = m_glb->chunkLength;
+            unique_file_ptr file(fopen(m_glb->path.c_str(), "rb"));
+            FILE* fp = file.get();
+            if (!fp) {
+                return false;
+            }
+            if (std::fseek(fp, m_glb->offset, SEEK_SET)) {
+                return false;
+            }
+            m_glb->data.resize(chunkLength);
+            if (chunkLength == fread(m_glb->data.data(), 1, chunkLength, fp)) {
+                return true;
+            }
+            else {
+                // failed to read
+                m_glb->data.clear();
+            }
+        }
+        return false;
+    }
+
     inline Mesh Node::mesh() const noexcept {
         size_t index;
         if (mesh(index)) {
@@ -1713,6 +1814,40 @@ namespace LAZY_GLTF2_NAMESPACE {
             return m_gltf->skin(index);
         }
         return Skin();
+    }
+
+    // TODO move this
+    template<typename T>
+    static bool readBinaryFile(const char* path, std::vector<T>& data) {
+
+    }
+
+    template<typename T>
+    bool Buffer::load(std::vector<T>& data) const noexcept {
+        static_assert(sizeof(T) == 1, "vector type must be 1 byte long (like char)");
+        const char* uriStr = uri();
+        if (uriStr == nullptr) {
+            // GLB
+            // TODO verify that this is the first buffer of the buffers array?
+            // "glTF Buffer referring to GLB-stored BIN chunk, must have buffer.uri 
+            // property undefined, and it must be the first element of buffers array"
+            if (m_gltf->loadGlbData()) { // TOD change loadGlbData to take a vector. Don't save m_glb.data
+                const auto& glbData = m_gltf->m_glb->data;
+                data.resize(glbData.size());
+                std::memcpy(data.data(), glbData.data(), data.size());
+                return true;
+            }
+        }
+        else if (startsWith(uriStr, DATA_APP_BASE64)) {
+            // base64
+
+        }
+        else {
+            // external bin
+            //byteLength();
+            // readBinaryFile(path, data);
+        }
+        return false;
     }
 }
 

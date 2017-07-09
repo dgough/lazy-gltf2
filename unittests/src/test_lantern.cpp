@@ -121,4 +121,38 @@ TEST(gltf, lantern) {
         EXPECT_EQ(node.nodes(), node.children());
     }
 
+    // find node by name
+    const char* nodeName = "LanternPole_Lantern";
+    auto poleNode = gltf.findNode(nodeName);
+    EXPECT_TRUE(poleNode);
+    EXPECT_STREQ(poleNode.name(), nodeName);
+    EXPECT_STRNE(poleNode.name(), "asdf");
+
+    // object comparison
+    EXPECT_EQ(poleNode, gltf.node(2));
+    EXPECT_NE(poleNode, gltf.node(0));
+    EXPECT_NE(poleNode, gltf.node(1));
+    EXPECT_NE(poleNode, gltf.node(500));
+    EXPECT_NE(poleNode, Node());
+
+    // find mesh by name
+    {
+        const char* meshName = "LanternPole_Lantern";
+        auto mesh = gltf.findMesh(meshName);
+        EXPECT_TRUE(mesh);
+        EXPECT_EQ(mesh, gltf.mesh(2));
+        EXPECT_STREQ(mesh.name(), meshName);
+        EXPECT_STRNE(mesh.name(), "asdf");
+        EXPECT_NE(mesh, gltf.mesh(0));
+        EXPECT_NE(mesh, Mesh());
+    }
+    // find material by name
+    {
+        const char* matName = "LanternPost_Mat";
+        auto material = gltf.findMaterial(matName);
+        EXPECT_TRUE(material);
+        EXPECT_EQ(material, gltf.material(0));
+        EXPECT_FALSE(gltf.findMaterial(nullptr));
+        EXPECT_EQ(gltf.findMaterial(nullptr), Material());
+    }
 }

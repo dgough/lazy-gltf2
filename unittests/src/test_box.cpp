@@ -187,5 +187,12 @@ TEST(gltf, box_binary) {
     Gltf gltf = createGltf(BINARY_BOX_PATH);
     EXPECT_TRUE(gltf);
     testBoxCommon(gltf);
+
+    auto buffer = gltf.buffer(0);
+    std::vector<unsigned char> data;
+    EXPECT_TRUE(buffer.load(data));
+    EXPECT_TRUE(data.size() > 0);
+    EXPECT_EQ(data.size(), buffer.byteLength());
+
     testMove(std::move(gltf));
 }

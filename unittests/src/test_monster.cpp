@@ -73,7 +73,7 @@ TEST(gltf, monster) {
         EXPECT_EQ(gltf.imageCount(), 1);
         auto image = gltf.image(0);
         EXPECT_TRUE(image);
-        EXPECT_STREQ(image.uri(), "Monster.jpg");        
+        EXPECT_STREQ(image.uri(), "Monster.jpg");
     }
 
     // textures
@@ -134,4 +134,15 @@ TEST(gltf, monster) {
     EXPECT_EQ(joints, skin.joints());
 
     EXPECT_TRUE(gltf.node(1).skin());
+
+    // find skin by name
+    {
+        const char* name = "Armature";
+        auto skin = gltf.findSkin(name);
+        EXPECT_TRUE(skin);
+        EXPECT_FALSE(Skin());
+        EXPECT_STREQ(name, skin.name());
+        EXPECT_EQ(skin, gltf.skin(0));
+        EXPECT_EQ(gltf.findSkin(nullptr), Skin());
+    }
 }

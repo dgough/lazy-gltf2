@@ -161,6 +161,7 @@
     <ClCompile Include="src\test_cameras.cpp" />
     <ClCompile Include="src\test_lantern.cpp" />
     <ClCompile Include="src\test_monster.cpp" />
+    <ClCompile Include="src\test_strings.cpp" />
     <ClCompile Include="src\test_TwoSidedPlane.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
