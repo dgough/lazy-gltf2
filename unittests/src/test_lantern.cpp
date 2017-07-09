@@ -31,10 +31,12 @@ TEST(gltf, lantern) {
     }
     auto attributes = bodyPrim.attributes();
     EXPECT_EQ(attributes.size(), 4);
-    EXPECT_EQ(attributes[0].second, 0);
-    EXPECT_EQ(attributes[1].second, 1);
-    EXPECT_EQ(attributes[2].second, 2);
-    EXPECT_EQ(attributes[3].second, 3);
+    if (attributes.size() >= 4) {
+        EXPECT_EQ(attributes[0].second, 0);
+        EXPECT_EQ(attributes[1].second, 1);
+        EXPECT_EQ(attributes[2].second, 2);
+        EXPECT_EQ(attributes[3].second, 3);
+    }
 
     EXPECT_TRUE(bodyPrim.position());
     EXPECT_TRUE(bodyPrim.normal());
@@ -88,7 +90,6 @@ TEST(gltf, lantern) {
     EXPECT_TRUE(roughness);
     EXPECT_EQ(roughness.metallicFactor(), 1.0f);
     EXPECT_EQ(roughness.roughnessFactor(), 1.0f);
-
     {
         std::array<float, 4> expected = { 0.214041144f, 0.214041144f, 0.214041144f, 1.0f };
         std::array<float, 4> actual;

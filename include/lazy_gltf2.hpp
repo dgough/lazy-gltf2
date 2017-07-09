@@ -7,7 +7,6 @@
 // suppress warning about fopen_s
 #define _CRT_SECURE_NO_WARNINGS
 
-#include <iostream>
 #include <fstream>
 #include <vector>
 #include <vector>
@@ -103,6 +102,166 @@ namespace LAZY_GLTF2_NAMESPACE {
             FLOAT = 5126,
         };
     }
+
+
+    /// Class that holds the GLB meta data.
+    class GlbData {
+    public:
+        std::string path;
+        std::uint32_t chunkLength;
+        std::uint32_t offset;
+        std::vector<char> data;
+        GlbData() = default;
+        ~GlbData() = default;
+        // Support moving
+        GlbData(GlbData&&) = default;
+        GlbData& operator=(GlbData&&) = default;
+        // Don't support copying
+        GlbData(const GlbData&) = delete;
+        GlbData& operator=(const GlbData&) = delete;
+    };
+
+    /// The root glTF object.
+    /// Use this class to load a file.
+    class Gltf final {
+    public:
+        Gltf() {}
+        /// Creates a Gltf object and loads a file.
+        /// @param path Path to the file to load.
+        explicit Gltf(const char* path) {
+            load(path);
+        }
+        ~Gltf() = default;
+        // support moving
+        Gltf(Gltf&&) = default;
+        Gltf& operator=(Gltf&&) = default;
+
+        // don't support copying
+        Gltf(const Gltf&) = delete;
+        Gltf& operator=(const Gltf&) = delete;
+
+        /// Loads a glTF 2.0 file.
+        /// @param[in] path Path to the file to load.
+        /// @return True if json file was loaded successful; false otherwise.
+        bool load(const char* path) noexcept;
+
+        /// Returns true if a glTF 2.0 file was loaded successfully.
+        operator bool() const noexcept {
+            return m_doc != nullptr;
+        }
+
+        /// Returns the index of the default scene.
+        bool defaultScene(size_t& index) {
+            if (m_doc) {
+                const auto& it = m_doc->FindMember("scene");
+                if (it != m_doc->MemberEnd()) {
+                    if (it->value.IsNumber()) {
+                        index = it->value.GetUint();
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /// Returns the default scene. This may not be the scene at index zero.
+        Scene defaultScene() const noexcept;
+
+        Scene scene(size_t index) const noexcept;
+        /// Returns the number of scenes.
+        size_t sceneCount() const noexcept {
+            return count("scenes");
+        }
+
+        Node node(size_t index) const noexcept;
+        size_t nodeCount() const noexcept {
+            return count("nodes");
+        }
+
+        Mesh mesh(size_t index) const noexcept;
+        size_t meshCount() const noexcept {
+            return count("meshes");
+        }
+
+        Camera camera(size_t index) const noexcept;
+        size_t cameraCount() const noexcept {
+            return count("cameras");
+        }
+
+        Accessor accessor(size_t index) const noexcept;
+        size_t accessorCount() const noexcept {
+            return count("accessors");
+        }
+
+        Buffer buffer(size_t index) const noexcept;
+        size_t bufferCount() const noexcept {
+            return count("buffers");
+        }
+
+        BufferView bufferView(size_t index) const noexcept;
+        size_t bufferViewCount() const noexcept {
+            return count("bufferViews");
+        }
+
+        Animation animation(size_t index) const noexcept;
+        size_t animationCount() const noexcept {
+            return count("animations");
+        }
+
+        Image image(size_t index) const noexcept;
+        size_t imageCount() const noexcept {
+            return count("images");
+        }
+
+        Texture texture(size_t index) const noexcept;
+        size_t textureCount() const noexcept {
+            return count("textures");
+        }
+
+        Sampler sampler(size_t index) const noexcept;
+        size_t samplerCount() const noexcept {
+            return count("samplers");
+        }
+
+        Material material(size_t index) const noexcept;
+        size_t materialCount() const noexcept {
+            return count("materials");
+        }
+
+        Skin skin(size_t index) const noexcept;
+        size_t skinCount() const noexcept {
+            return count("skins");
+        }
+
+        Asset asset() const noexcept;
+
+        /// Returns a pointer to the json document. May be null.
+        const JsonDocument* doc() const noexcept {
+            return m_doc.get();
+        }
+
+    private:
+
+        size_t count(const char* key) const noexcept {
+            if (m_doc) {
+                const auto& it = m_doc->FindMember(key);
+                if (it != m_doc->MemberEnd()) {
+                    return it->value.Size();
+                }
+            }
+            return 0;
+        }
+
+        bool loadGlb(const char* path);
+
+        void clear() noexcept {
+            m_doc.reset(nullptr);
+            m_glb.reset(nullptr);
+        }
+
+        std::unique_ptr<JsonDocument> m_doc;
+        std::unique_ptr<GlbData> m_glb;
+    };
 
     // functions
 
@@ -223,11 +382,13 @@ namespace LAZY_GLTF2_NAMESPACE {
     template<typename T>
     static T findGltfObject(const Gltf* gltf, const char* key, size_t index) {
         const auto doc = gltf->doc();
-        const auto it = doc->FindMember(key);
-        if (it != doc->MemberEnd()) {
-            const auto& values = it->value;
-            if (values.IsArray() && index < values.Size()) {
-                return T(gltf, &values[index]);
+        if (doc) {
+            const auto it = doc->FindMember(key);
+            if (it != doc->MemberEnd()) {
+                const auto& values = it->value;
+                if (values.IsArray() && index < values.Size()) {
+                    return T(gltf, &values[index]);
+                }
             }
         }
         return T();
@@ -264,161 +425,6 @@ namespace LAZY_GLTF2_NAMESPACE {
         }
         return false;
     }
-
-    /// Class that holds the GLB meta data.
-    class GlbData {
-    public:
-        std::string path;
-        std::uint32_t chunkLength;
-        std::uint32_t offset;
-        std::vector<char> data;
-        GlbData() = default;
-        ~GlbData() = default;
-        // Support moving
-        GlbData(GlbData&&) = default;
-        GlbData& operator=(GlbData&&) = default;
-        // Don't support copying
-        GlbData(const GlbData&) = delete;
-        GlbData& operator=(const GlbData&) = delete;
-    };
-
-    /// The root glTF object.
-    /// Use this class to load a file.
-    class Gltf final {
-    public:
-        Gltf() {}
-        /// Creates a Gltf object and loads a file.
-        /// @param path Path to the file to load.
-        explicit Gltf(const char* path) {
-            load(path);
-        }
-        ~Gltf() = default;
-        // support moving
-        Gltf(Gltf&&) = default;
-        Gltf& operator=(Gltf&&) = default;
-
-        // don't support copying
-        Gltf(const Gltf&) = delete;
-        Gltf& operator=(const Gltf&) = delete;
-
-        /// Loads a glTF 2.0 file.
-        /// @param[in] path Path to the file to load.
-        /// @return True if json file was loaded successful; false otherwise.
-        bool load(const char* path) noexcept;
-
-        /// Returns true if a glTF 2.0 file was loaded successfully.
-        operator bool() const noexcept {
-            return m_doc != nullptr;
-        }
-
-        /// Returns the index of the default scene.
-        bool defaultScene(size_t& index) {
-            const auto& it = m_doc->FindMember("scene");
-            if (it != m_doc->MemberEnd()) {
-                if (it->value.IsNumber()) {
-                    index = it->value.GetUint();
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /// Returns the default scene. This may not be the scene at index zero.
-        Scene defaultScene() const noexcept;
-
-        Scene scene(size_t index) const noexcept;
-        /// Returns the number of scenes.
-        size_t sceneCount() const noexcept {
-            return count("scenes");
-        }
-
-        Node node(size_t index) const noexcept;
-        size_t nodeCount() const noexcept {
-            return count("nodes");
-        }
-
-        Mesh mesh(size_t index) const noexcept;
-        size_t meshCount() const noexcept {
-            return count("meshes");
-        }
-
-        Camera camera(size_t index) const noexcept;
-        size_t cameraCount() const noexcept {
-            return count("cameras");
-        }
-
-        Accessor accessor(size_t index) const noexcept;
-        size_t accessorCount() const noexcept {
-            return count("accessors");
-        }
-
-        Buffer buffer(size_t index) const noexcept;
-        size_t bufferCount() const noexcept {
-            return count("buffers");
-        }
-
-        BufferView bufferView(size_t index) const noexcept;
-        size_t bufferViewCount() const noexcept {
-            return count("bufferViews");
-        }
-
-        Animation animation(size_t index) const noexcept;
-        size_t animationCount() const noexcept {
-            return count("animations");
-        }
-
-        Image image(size_t index) const noexcept;
-        size_t imageCount() const noexcept {
-            return count("images");
-        }
-
-        Texture texture(size_t index) const noexcept;
-        size_t textureCount() const noexcept {
-            return count("textures");
-        }
-
-        Sampler sampler(size_t index) const noexcept;
-        size_t samplerCount() const noexcept {
-            return count("samplers");
-        }
-
-        Material material(size_t index) const noexcept;
-        size_t materialCount() const noexcept {
-            return count("materials");
-        }
-
-        Skin skin(size_t index) const noexcept;
-        size_t skinCount() const noexcept {
-            return count("skins");
-        }
-
-        Asset asset() const noexcept;
-
-        /// Returns a pointer to the json document. May be null.
-        const JsonDocument* doc() const noexcept {
-            return m_doc.get();
-        }
-
-    private:
-
-        size_t count(const char* key) const noexcept {
-            const auto& it = m_doc->FindMember(key);
-            if (it != m_doc->MemberEnd()) {
-                return it->value.Size();
-            }
-            return 0;
-        }
-
-        bool loadGlb(const char* path);
-
-        void clear() noexcept {
-            m_doc.reset(nullptr);
-            m_glb.reset(nullptr);
-        }
-
-        std::unique_ptr<JsonDocument> m_doc;
-        std::unique_ptr<GlbData> m_glb;
-    };
 
     /// Base class for GLTF objects.
     class Object {
@@ -483,6 +489,7 @@ namespace LAZY_GLTF2_NAMESPACE {
             }
             return defaultValue;
         }
+
         bool findBool(const char* key, bool defaultValue = false) const noexcept {
             if (m_json != nullptr) {
                 auto it = m_json->FindMember(key);
@@ -1549,7 +1556,6 @@ namespace LAZY_GLTF2_NAMESPACE {
         std::unique_ptr<FILE, int(*)(FILE*)> file(fopen(path, "rb"), &std::fclose);
         FILE* fp = file.get();
         if (!fp) {
-            std::cout << "error reading file" << std::endl;
             return false;
         }
         char readBuffer[65536];
@@ -1561,10 +1567,12 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     inline Scene Gltf::defaultScene() const noexcept {
-        const auto& it = m_doc->FindMember("scene");
-        if (it != m_doc->MemberEnd()) {
-            if (it->value.IsNumber()) {
-                return scene(it->value.GetUint());
+        if (m_doc) {
+            const auto& it = m_doc->FindMember("scene");
+            if (it != m_doc->MemberEnd()) {
+                if (it->value.IsNumber()) {
+                    return scene(it->value.GetUint());
+                }
             }
         }
         return Scene();
@@ -1623,11 +1631,13 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     inline Asset Gltf::asset() const noexcept {
-        auto it = m_doc->FindMember("asset");
-        if (it != m_doc->MemberEnd()) {
-            const auto& v = it->value;
-            if (v.IsObject()) {
-                return Asset(this, &v);
+        if (m_doc) {
+            auto it = m_doc->FindMember("asset");
+            if (it != m_doc->MemberEnd()) {
+                const auto& v = it->value;
+                if (v.IsObject()) {
+                    return Asset(this, &v);
+                }
             }
         }
         return Asset();
@@ -1637,7 +1647,6 @@ namespace LAZY_GLTF2_NAMESPACE {
         std::unique_ptr<FILE, int(*)(FILE*)> file(fopen(path, "rb"), &std::fclose);
         FILE* fp = file.get();
         if (!fp) {
-            std::cout << "Error reading GLB file." << std::endl;
             return false;
         }
         static constexpr size_t magic = 0;
