@@ -7,12 +7,16 @@
 // suppress warning about fopen_s
 #define _CRT_SECURE_NO_WARNINGS
 
+#include <string>
 #include <fstream>
 #include <vector>
 #include <vector>
 #include <array>
 #include <memory>
 #include <cstdint>
+#ifndef _WIN32
+#include <libgen.h>
+#endif
 
 #define RAPIDJSON_NO_SIZETYPEDEFINE
 namespace rapidjson { typedef ::std::size_t SizeType; }
@@ -81,7 +85,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     static constexpr std::uint32_t MAGIC = 0x46546C67;
     static constexpr std::uint32_t JSON_CHUNK_TYPE = 0x4E4F534A;
     static constexpr std::uint32_t BINARY_CHUNK_TYPE = 0x004E4942;
-    static constexpr char* DATA_APP_BASE64 = "data:application/octet-stream;base64,";
+    static const constexpr char* DATA_APP_BASE64 = "data:application/octet-stream;base64,";
 
     namespace GLValue {
         enum {
@@ -118,7 +122,6 @@ namespace LAZY_GLTF2_NAMESPACE {
         std::string path;
         std::uint32_t chunkLength;
         std::uint32_t offset;
-        std::vector<unsigned char> data; // TODO remove
         GlbData() = default;
         ~GlbData() = default;
         // Support moving
@@ -287,16 +290,19 @@ namespace LAZY_GLTF2_NAMESPACE {
             return T();
         }
 
-        bool loadGlb(const char* path);
-        bool loadGlbData() const noexcept;
+        bool loadGlbMetaData(const char* path);
+        template<typename T>
+        bool loadGlbData(std::vector<T>& data) const noexcept;
 
         void clear() noexcept {
             m_doc.reset(nullptr);
             m_glb.reset(nullptr);
+            m_baseDir.clear();
         }
 
         std::unique_ptr<JsonDocument> m_doc;
         std::unique_ptr<GlbData> m_glb;
+        std::string m_baseDir;
     };
 
     // functions
@@ -314,6 +320,43 @@ namespace LAZY_GLTF2_NAMESPACE {
             return false;
         }
         return strncmp(prefix, subject, strlen(prefix)) == 0;
+    }
+
+    inline std::string baseDir(const char* path) {
+        // This is copied from the code I wrote in gameplay3d
+        if (path == nullptr || strlen(path) == 0) {
+            return "";
+        }
+#ifdef _WIN32
+        char drive[_MAX_DRIVE];
+        char dir[_MAX_DIR];
+        _splitpath_s(path, drive, _MAX_DRIVE, dir, _MAX_DIR, nullptr, 0, nullptr, 0);
+        std::string dirname;
+        size_t driveLength = strlen(drive);
+        if (driveLength > 0) {
+            dirname.reserve(driveLength + strlen(dir));
+            dirname.append(drive);
+            dirname.append(dir);
+        }
+        else {
+            dirname.assign(dir);
+        }
+        std::replace(dirname.begin(), dirname.end(), '\\', '/');
+        return dirname;
+#else
+        // dirname() modifies the input string so create a temp string
+        std::string dirname;
+        char* tempPath = new char[strlen(path) + 1];
+        strcpy(tempPath, path);
+        char* dir = ::dirname(tempPath);
+        if (dir && strlen(dir) > 0) {
+            dirname.assign(dir);
+            // dirname() strips off the trailing '/' so add it back to be consistent with Windows
+            dirname.append("/");
+        }
+        delete[] tempPath;
+        return dirname;
+#endif
     }
 
     template<typename T>
@@ -1609,7 +1652,7 @@ namespace LAZY_GLTF2_NAMESPACE {
         clear();
         size_t len = strlen(path);
         if (lowercase(path[len - 1]) == 'b') { // .glb
-            return loadGlb(path);
+            return loadGlbMetaData(path);
         }
         unique_file_ptr file(fopen(path, "rb"));
         FILE* fp = file.get();
@@ -1621,6 +1664,7 @@ namespace LAZY_GLTF2_NAMESPACE {
 
         m_doc.reset(new JsonDocument());
         m_doc->ParseStream(is);
+        m_baseDir.assign(baseDir(path));
         return true;
     }
 
@@ -1717,7 +1761,7 @@ namespace LAZY_GLTF2_NAMESPACE {
         return findByName<Material>("materials", name);
     }
 
-    inline bool Gltf::loadGlb(const char* path) {
+    inline bool Gltf::loadGlbMetaData(const char* path) {
         unique_file_ptr file(fopen(path, "rb"));
         FILE* fp = file.get();
         if (!fp) {
@@ -1742,8 +1786,7 @@ namespace LAZY_GLTF2_NAMESPACE {
                 m_doc->ParseStream(stream);
 
                 // attempt to read the binary buffer chunk
-                long offset = sizeof(header) + header[chunkLength];
-                if (std::fseek(fp, offset, SEEK_SET)) {
+                if (std::fseek(fp, sizeof(header) + header[chunkLength], SEEK_SET)) {
                     return true;
                 }
                 std::uint32_t binaryChunkLength;
@@ -1754,9 +1797,8 @@ namespace LAZY_GLTF2_NAMESPACE {
                             m_glb.reset(new GlbData());
                         }
                         m_glb->path.assign(path);
-                        m_glb->offset = offset;
+                        m_glb->offset = static_cast<size_t>(ftell(fp));
                         m_glb->chunkLength = binaryChunkLength;
-                        m_glb->data.clear();
                     }
                 }
                 return true;
@@ -1765,12 +1807,10 @@ namespace LAZY_GLTF2_NAMESPACE {
         return false;
     }
 
-    inline bool Gltf::loadGlbData() const noexcept {
+    template<typename T>
+    bool Gltf::loadGlbData(std::vector<T>& data) const noexcept {
+        static_assert(sizeof(T) == 1, "vector type size must be 1");
         if (m_glb) {
-            if (!m_glb->data.empty()) {
-                // already loaded
-                return true;
-            }
             const auto& chunkLength = m_glb->chunkLength;
             unique_file_ptr file(fopen(m_glb->path.c_str(), "rb"));
             FILE* fp = file.get();
@@ -1780,13 +1820,9 @@ namespace LAZY_GLTF2_NAMESPACE {
             if (std::fseek(fp, m_glb->offset, SEEK_SET)) {
                 return false;
             }
-            m_glb->data.resize(chunkLength);
-            if (chunkLength == fread(m_glb->data.data(), 1, chunkLength, fp)) {
+            data.resize(chunkLength);
+            if (fread(data.data(), 1, chunkLength, fp) == chunkLength) {
                 return true;
-            }
-            else {
-                // failed to read
-                m_glb->data.clear();
             }
         }
         return false;
@@ -1818,34 +1854,39 @@ namespace LAZY_GLTF2_NAMESPACE {
 
     // TODO move this
     template<typename T>
-    static bool readBinaryFile(const char* path, std::vector<T>& data) {
-
+    static bool readBinaryFile(const char* path, size_t byteLength, std::vector<T>& data) {
+        unique_file_ptr file(fopen(path, "rb"));
+        FILE* fp = file.get();
+        if (!fp) {
+            return false;
+        }
+        data.resize(byteLength);
+        if (fread(data.data(), 1, byteLength, fp) == byteLength) {
+            return true;
+        }
+        return false;
     }
 
     template<typename T>
     bool Buffer::load(std::vector<T>& data) const noexcept {
-        static_assert(sizeof(T) == 1, "vector type must be 1 byte long (like char)");
+        static_assert(sizeof(T) == 1, "vector type must be 1 byte (like char or unsigned char)");
         const char* uriStr = uri();
         if (uriStr == nullptr) {
             // GLB
             // TODO verify that this is the first buffer of the buffers array?
             // "glTF Buffer referring to GLB-stored BIN chunk, must have buffer.uri 
             // property undefined, and it must be the first element of buffers array"
-            if (m_gltf->loadGlbData()) { // TOD change loadGlbData to take a vector. Don't save m_glb.data
-                const auto& glbData = m_gltf->m_glb->data;
-                data.resize(glbData.size());
-                std::memcpy(data.data(), glbData.data(), data.size());
-                return true;
-            }
+            return m_gltf->loadGlbData(data);
         }
         else if (startsWith(uriStr, DATA_APP_BASE64)) {
             // base64
 
         }
         else {
+            // TODO make sure this is a local file URI
             // external bin
-            //byteLength();
-            // readBinaryFile(path, data);
+            std::string path = m_gltf->m_baseDir + '/' + uriStr;
+            return readBinaryFile(path.c_str(), byteLength(), data);
         }
         return false;
     }

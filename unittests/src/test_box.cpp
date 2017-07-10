@@ -196,3 +196,19 @@ TEST(gltf, box_binary) {
 
     testMove(std::move(gltf));
 }
+
+TEST(gltf, compare_buffers) {
+    Gltf g1(BOX_PATH);
+    ASSERT_TRUE(g1);
+    Gltf g2(BINARY_BOX_PATH);
+    ASSERT_TRUE(g2);
+    auto b1 = g1.buffer(0);
+    EXPECT_TRUE(b1);
+    auto b2 = g2.buffer(0);
+    EXPECT_TRUE(b2);
+    std::vector<unsigned char> v1;
+    std::vector<unsigned char> v2;
+    EXPECT_TRUE(b1.load(v1));
+    EXPECT_TRUE(b2.load(v2));
+    EXPECT_EQ(v1, v2);
+}

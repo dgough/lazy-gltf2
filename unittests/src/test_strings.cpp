@@ -6,7 +6,7 @@
 
 using namespace gltf2;
 
-TEST(gltf, startsWith) {
+TEST(strings, startsWith) {
     char blank[1] = { '\0' };
     EXPECT_TRUE(startsWith(nullptr, nullptr));
     EXPECT_TRUE(startsWith("", ""));
@@ -23,4 +23,12 @@ TEST(gltf, startsWith) {
     EXPECT_FALSE(startsWith("", nullptr));
     EXPECT_FALSE(startsWith(nullptr, ""));
     EXPECT_FALSE(startsWith("The", "The quick"));
+}
+
+TEST(strings, baseDir) {
+    EXPECT_EQ(baseDir(nullptr), "");
+    EXPECT_EQ(baseDir("./asdf.txt"), "./");
+    EXPECT_EQ(baseDir("a/b/c/asdf.txt"), "a/b/c/");
+    EXPECT_EQ(baseDir("glTF-Sample-Models/2.0/Box/glTF/box.gltf"), "glTF-Sample-Models/2.0/Box/glTF/");
+    EXPECT_EQ(baseDir("../../../box.gltf"), "../../../");
 }

@@ -23,6 +23,7 @@ set(UNITTEST_SRC
     src/test_lantern.cpp
     src/test_monster.cpp
     src/test_TwoSidedPlane.cpp
+    src/test_strings.cpp
 )
  
 add_executable(${PROGRAM_NAME} ${UNITTEST_SRC})
