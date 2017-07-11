@@ -8,6 +8,7 @@ using namespace gltf2;
 
 static const char* BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF/Box.gltf";
 static const char* BINARY_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-Binary/Box.glb";
+static const char* BASE64_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-Embedded/Box.gltf";
 
 void testBoxCommon(Gltf& gltf) {
     // counts
@@ -119,7 +120,7 @@ void testBoxCommon(Gltf& gltf) {
         EXPECT_TRUE(accessor.bufferView(index));
         EXPECT_EQ(index, 1);
     }
-    
+
     // bufferViews
     {
         EXPECT_EQ(gltf.bufferViewCount(), 2);
@@ -197,18 +198,33 @@ TEST(gltf, box_binary) {
     testMove(std::move(gltf));
 }
 
+TEST(gltf, box_base64) {
+    Gltf gltf = createGltf(BASE64_BOX_PATH);
+    EXPECT_TRUE(gltf);
+    testBoxCommon(gltf);
+}
+
 TEST(gltf, compare_buffers) {
     Gltf g1(BOX_PATH);
     ASSERT_TRUE(g1);
     Gltf g2(BINARY_BOX_PATH);
     ASSERT_TRUE(g2);
+    Gltf g3(BASE64_BOX_PATH);
+    ASSERT_TRUE(g3);
+
     auto b1 = g1.buffer(0);
     EXPECT_TRUE(b1);
     auto b2 = g2.buffer(0);
     EXPECT_TRUE(b2);
+    auto b3 = g3.buffer(0);
+    EXPECT_TRUE(b3);
+
     std::vector<unsigned char> v1;
     std::vector<unsigned char> v2;
+    std::vector<unsigned char> v3;
     EXPECT_TRUE(b1.load(v1));
     EXPECT_TRUE(b2.load(v2));
+    EXPECT_TRUE(b3.load(v3));
     EXPECT_EQ(v1, v2);
+    EXPECT_EQ(v1, v3);
 }

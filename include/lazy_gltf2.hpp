@@ -1,11 +1,13 @@
-/// GLTF 2.0 loader.
-/// <a href="https://github.com/KhronosGroup/glTF/tree/master/specification/2.0">glTF 2.0 specification.</a>
+/// Lazy glTF 2.0 loader: https://github.com/dgough/lazy-gltf2
+/// glTF 2.0 spec: https://github.com/KhronosGroup/glTF/tree/master/specification/2.0
 #pragma once
 #ifndef LAZY_GLTF2_HPP
 #define LAZY_GLTF2_HPP
 
 // suppress warning about fopen_s
 #define _CRT_SECURE_NO_WARNINGS
+
+#include "lib64.hpp"
 
 #include <string>
 #include <fstream>
@@ -18,6 +20,7 @@
 #include <libgen.h>
 #endif
 
+#define LAZY_GLTF2_DATA_APP_BASE64 "data:application/octet-stream;base64,"
 #define RAPIDJSON_NO_SIZETYPEDEFINE
 namespace rapidjson { typedef ::std::size_t SizeType; }
 
@@ -85,7 +88,6 @@ namespace LAZY_GLTF2_NAMESPACE {
     static constexpr std::uint32_t MAGIC = 0x46546C67;
     static constexpr std::uint32_t JSON_CHUNK_TYPE = 0x4E4F534A;
     static constexpr std::uint32_t BINARY_CHUNK_TYPE = 0x004E4942;
-    static const constexpr char* DATA_APP_BASE64 = "data:application/octet-stream;base64,";
 
     namespace GLValue {
         enum {
@@ -512,6 +514,40 @@ namespace LAZY_GLTF2_NAMESPACE {
                 }
                 return true;
             }
+        }
+        return false;
+    }
+
+    template<typename T>
+    static bool readBase64(const char* text, size_t byteLength, std::vector<T>&data) {
+        std::istringstream in(text);
+        data.clear();
+        data.reserve(byteLength);
+        lib64::decoder decoder;
+        lib64::base64_init_decodestate(&decoder._state);
+        std::array<char, 1024> code;
+        std::array<char, 1024> plaintext;
+        int codelength;
+        do {
+            in.read(code.data(), code.size());
+            codelength = static_cast<int>(in.gcount());
+            int plainlength = decoder.decode(code.data(), codelength, plaintext.data());
+            data.insert(data.end(), plaintext.begin(), plaintext.begin() + plainlength);
+        } while (in.good() && codelength > 0);
+        base64_init_decodestate(&decoder._state);
+        return true;
+    }
+
+    template<typename T>
+    static bool readBinaryFile(const char* path, size_t byteLength, std::vector<T>& data) {
+        unique_file_ptr file(fopen(path, "rb"));
+        FILE* fp = file.get();
+        if (!fp) {
+            return false;
+        }
+        data.resize(byteLength);
+        if (fread(data.data(), 1, byteLength, fp) == byteLength) {
+            return true;
         }
         return false;
     }
@@ -1852,21 +1888,6 @@ namespace LAZY_GLTF2_NAMESPACE {
         return Skin();
     }
 
-    // TODO move this
-    template<typename T>
-    static bool readBinaryFile(const char* path, size_t byteLength, std::vector<T>& data) {
-        unique_file_ptr file(fopen(path, "rb"));
-        FILE* fp = file.get();
-        if (!fp) {
-            return false;
-        }
-        data.resize(byteLength);
-        if (fread(data.data(), 1, byteLength, fp) == byteLength) {
-            return true;
-        }
-        return false;
-    }
-
     template<typename T>
     bool Buffer::load(std::vector<T>& data) const noexcept {
         static_assert(sizeof(T) == 1, "vector type must be 1 byte (like char or unsigned char)");
@@ -1878,14 +1899,14 @@ namespace LAZY_GLTF2_NAMESPACE {
             // property undefined, and it must be the first element of buffers array"
             return m_gltf->loadGlbData(data);
         }
-        else if (startsWith(uriStr, DATA_APP_BASE64)) {
+        else if (startsWith(uriStr, LAZY_GLTF2_DATA_APP_BASE64)) {
             // base64
-
+            return readBase64(uriStr + sizeof(LAZY_GLTF2_DATA_APP_BASE64) - 1, byteLength(), data);
         }
         else {
             // TODO make sure this is a local file URI
             // external bin
-            std::string path = m_gltf->m_baseDir + '/' + uriStr;
+            std::string path = m_gltf->m_baseDir + uriStr;
             return readBinaryFile(path.c_str(), byteLength(), data);
         }
         return false;

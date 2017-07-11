@@ -8,6 +8,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "include", "include", "{EDCE65B6-9C84-414F-8019-54872FE3D2CB}"
 	ProjectSection(SolutionItems) = preProject
 		include\lazy_gltf2.hpp = include\lazy_gltf2.hpp
+		include\lib64.hpp = include\lib64.hpp
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "example", "example\example.vcxproj", "{E1F3A149-3468-49F6-818B-161166DD01D8}"
