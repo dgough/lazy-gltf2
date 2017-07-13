@@ -175,6 +175,8 @@ TEST(gltf, box) {
         EXPECT_EQ(buffer.byteLength(), 648);
         EXPECT_STREQ(buffer.uri(), "Box0.bin");
     }
+
+    EXPECT_EQ(gltf.baseDir(), std::string(BOX_PATH, strlen(BOX_PATH) - 8));
 }
 
 static Gltf createGltf(const char* path) {

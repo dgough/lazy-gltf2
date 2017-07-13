@@ -25,10 +25,10 @@ TEST(strings, startsWith) {
     EXPECT_FALSE(startsWith("The", "The quick"));
 }
 
-TEST(strings, baseDir) {
-    EXPECT_EQ(baseDir(nullptr), "");
-    EXPECT_EQ(baseDir("./asdf.txt"), "./");
-    EXPECT_EQ(baseDir("a/b/c/asdf.txt"), "a/b/c/");
-    EXPECT_EQ(baseDir("glTF-Sample-Models/2.0/Box/glTF/box.gltf"), "glTF-Sample-Models/2.0/Box/glTF/");
-    EXPECT_EQ(baseDir("../../../box.gltf"), "../../../");
+TEST(strings, dirName) {
+    EXPECT_EQ(dirName(nullptr), "");
+    EXPECT_EQ(dirName("./asdf.txt"), "./");
+    EXPECT_EQ(dirName("a/b/c/asdf.txt"), "a/b/c/");
+    EXPECT_EQ(dirName("glTF-Sample-Models/2.0/Box/glTF/box.gltf"), "glTF-Sample-Models/2.0/Box/glTF/");
+    EXPECT_EQ(dirName("../../../box.gltf"), "../../../");
 }

@@ -11,6 +11,7 @@
 
 #include <string>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <vector>
 #include <array>
@@ -52,7 +53,6 @@ namespace LAZY_GLTF2_NAMESPACE {
     class MorphTarget;
     class Image;
     class Skin;
-    class GlbData;
     class Gltf;
     class Channel;
 
@@ -118,22 +118,6 @@ namespace LAZY_GLTF2_NAMESPACE {
         };
     }
 
-    /// Class that holds the GLB meta data.
-    class GlbData {
-    public:
-        std::string path;
-        std::uint32_t chunkLength;
-        std::uint32_t offset;
-        GlbData() = default;
-        ~GlbData() = default;
-        // Support moving
-        GlbData(GlbData&&) = default;
-        GlbData& operator=(GlbData&&) = default;
-        // Don't support copying
-        GlbData(const GlbData&) = delete;
-        GlbData& operator=(const GlbData&) = delete;
-    };
-
     /// The root glTF object.
     /// Use this class to load a file.
     class Gltf final {
@@ -158,6 +142,13 @@ namespace LAZY_GLTF2_NAMESPACE {
         /// @return True if json file was loaded successful; false otherwise.
         bool load(const char* path) noexcept;
 
+        /// Returns the base directory of the file that was loaded.
+        /// The path will use forward slashes regardless of OS.
+        /// If you opened "res/box.gltf" then the returned string will be "res/"
+        const std::string& baseDir() {
+            return m_baseDir;
+        }
+
         /// Returns true if a glTF 2.0 file was loaded successfully.
         operator bool() const noexcept {
             return m_doc != nullptr;
@@ -178,6 +169,7 @@ namespace LAZY_GLTF2_NAMESPACE {
         }
 
         /// Returns the default scene. This may not be the scene at index zero.
+        Scene scene() const noexcept;
         Scene defaultScene() const noexcept;
 
         Scene scene(size_t index) const noexcept;
@@ -264,6 +256,22 @@ namespace LAZY_GLTF2_NAMESPACE {
 
     private:
 
+        /// Class that holds the GLB meta data.
+        class GlbData {
+        public:
+            std::string path;
+            std::uint32_t chunkLength;
+            std::uint32_t offset;
+            GlbData() = default;
+            ~GlbData() = default;
+            // Support moving
+            GlbData(GlbData&&) = default;
+            GlbData& operator=(GlbData&&) = default;
+            // Don't support copying
+            GlbData(const GlbData&) = delete;
+            GlbData& operator=(const GlbData&) = delete;
+        };
+
         size_t count(const char* key) const noexcept {
             if (m_doc) {
                 const auto& it = m_doc->FindMember(key);
@@ -324,7 +332,7 @@ namespace LAZY_GLTF2_NAMESPACE {
         return strncmp(prefix, subject, strlen(prefix)) == 0;
     }
 
-    inline std::string baseDir(const char* path) {
+    inline std::string dirName(const char* path) {
         // This is copied from the code I wrote in gameplay3d
         if (path == nullptr || strlen(path) == 0) {
             return "";
@@ -737,6 +745,9 @@ namespace LAZY_GLTF2_NAMESPACE {
             }
             return Node();
         }
+        Node node(size_t index) const noexcept {
+            return child(index);
+        }
         size_t childCount() const noexcept {
             return count("children");
         }
@@ -817,15 +828,20 @@ namespace LAZY_GLTF2_NAMESPACE {
         Buffer() {}
         Buffer(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
 
+        /// Returns the uri string. May be null because GLB buffers don't have a uri.
         const char* uri() const noexcept {
             return str("uri");
         }
         size_t byteLength() const noexcept {
             return findNumberOrDefault<size_t>(m_json, "byteLength", 0);
         }
+
+        /// Loads data from the buffer.
+        /// You should cache this data in your engine because multiple BufferViews may refer to the same Buffer.
+        /// @param[in] data The vector to load the data into. It will be resized to byteLength().
+        /// @return True if the buffer was loaded successfully; false otherwise.
         template<typename T>
         bool load(std::vector<T>& data) const noexcept;
-        // TODO method to get values regardless of location
     };
 
     class BufferView : public Named {
@@ -857,6 +873,8 @@ namespace LAZY_GLTF2_NAMESPACE {
         size_t byteStride() const noexcept {
             return findNumberOrDefault(m_json, "byteStride", 4);
         }
+
+        /// Target is not a required field so you might want to call hasTarget() first.
         Target target() const noexcept {
             int num;
             if (findNumber<int>(m_json, "target", num)) {
@@ -869,6 +887,11 @@ namespace LAZY_GLTF2_NAMESPACE {
             }
             return Target::ARRAY_BUFFER;
         }
+
+        bool target(int& value) const noexcept {
+            return findNumber<int>(m_json, "target", value);
+        }
+
         bool hasTarget() const noexcept {
             int num;
             return findNumber<int>(m_json, "target", num);
@@ -1516,6 +1539,10 @@ namespace LAZY_GLTF2_NAMESPACE {
             return findObject<Primitive>(m_gltf, m_json, "primitives", index);
         }
 
+        Primitive operator[](size_t index) const noexcept {
+            return primitive(index);
+        }
+
         size_t primitiveCount() const noexcept {
             return count("primitives");
         }
@@ -1700,8 +1727,12 @@ namespace LAZY_GLTF2_NAMESPACE {
 
         m_doc.reset(new JsonDocument());
         m_doc->ParseStream(is);
-        m_baseDir.assign(baseDir(path));
+        m_baseDir.assign(dirName(path));
         return true;
+    }
+
+    inline Scene Gltf::scene() const noexcept {
+        return defaultScene();
     }
 
     inline Scene Gltf::defaultScene() const noexcept {
@@ -1891,6 +1922,9 @@ namespace LAZY_GLTF2_NAMESPACE {
     template<typename T>
     bool Buffer::load(std::vector<T>& data) const noexcept {
         static_assert(sizeof(T) == 1, "vector type must be 1 byte (like char or unsigned char)");
+        if (m_gltf == nullptr) {
+            return false;
+        }
         const char* uriStr = uri();
         if (uriStr == nullptr) {
             // GLB
