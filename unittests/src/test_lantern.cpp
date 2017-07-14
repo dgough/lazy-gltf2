@@ -147,12 +147,25 @@ TEST(gltf, lantern) {
         EXPECT_NE(mesh, Mesh());
     }
     // find material by name
-    {
-        const char* matName = "LanternPost_Mat";
-        auto material = gltf.findMaterial(matName);
-        EXPECT_TRUE(material);
-        EXPECT_EQ(material, gltf.material(0));
-        EXPECT_FALSE(gltf.findMaterial(nullptr));
-        EXPECT_EQ(gltf.findMaterial(nullptr), Material());
-    }
+    const char* matName = "LanternPost_Mat";
+    material = gltf.findMaterial(matName);
+    EXPECT_TRUE(material);
+    EXPECT_EQ(material, gltf.material(0));
+    EXPECT_FALSE(gltf.findMaterial(nullptr));
+    EXPECT_EQ(gltf.findMaterial(nullptr), Material());
+
+    // vectors
+    EXPECT_EQ(gltf.scenes().size(), gltf.sceneCount());
+    EXPECT_EQ(gltf.nodes().size(), gltf.nodeCount());
+    EXPECT_EQ(gltf.meshes().size(), gltf.meshCount());
+    EXPECT_EQ(gltf.cameras().size(), gltf.cameraCount());
+    EXPECT_EQ(gltf.accessors().size(), gltf.accessorCount());
+    EXPECT_EQ(gltf.buffers().size(), gltf.bufferCount());
+    EXPECT_EQ(gltf.bufferViews().size(), gltf.bufferViewCount());
+    EXPECT_EQ(gltf.animations().size(), gltf.animationCount());
+    EXPECT_EQ(gltf.images().size(), gltf.imageCount());
+    EXPECT_EQ(gltf.textures().size(), gltf.textureCount());
+    EXPECT_EQ(gltf.samplers().size(), gltf.samplerCount());
+    EXPECT_EQ(gltf.materials().size(), gltf.materialCount());
+    EXPECT_EQ(gltf.skins().size(), gltf.skinCount());
 }

@@ -9,6 +9,7 @@ using namespace gltf2;
 static const char* BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF/Box.gltf";
 static const char* BINARY_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-Binary/Box.glb";
 static const char* BASE64_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-Embedded/Box.gltf";
+static const char* PBR_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-pbrSpecularGlossiness/Box.gltf";
 
 void testBoxCommon(Gltf& gltf) {
     // counts
@@ -229,4 +230,10 @@ TEST(gltf, compare_buffers) {
     EXPECT_TRUE(b3.load(v3));
     EXPECT_EQ(v1, v2);
     EXPECT_EQ(v1, v3);
+}
+
+TEST(gltf, box_pbr) {
+    Gltf gltf(PBR_BOX_PATH);
+    EXPECT_TRUE(gltf);
+
 }

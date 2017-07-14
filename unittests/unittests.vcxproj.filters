@@ -4,10 +4,19 @@
     <Filter Include="src">
       <UniqueIdentifier>{4edf61f9-0828-436d-b82b-765975f359ce}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{abc8e673-dd81-4e29-b4fa-d84c17d9d5e1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common.hpp">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\lazy_gltf2.hpp">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\lib64.hpp">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

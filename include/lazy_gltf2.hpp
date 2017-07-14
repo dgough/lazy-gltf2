@@ -13,7 +13,6 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include <vector>
 #include <array>
 #include <memory>
 #include <cstdint>
@@ -177,66 +176,79 @@ namespace LAZY_GLTF2_NAMESPACE {
         size_t sceneCount() const noexcept {
             return count("scenes");
         }
+        std::vector<Scene> scenes() const noexcept;
 
         Node node(size_t index) const noexcept;
         size_t nodeCount() const noexcept {
             return count("nodes");
         }
+        std::vector<Node> nodes() const noexcept;
 
         Mesh mesh(size_t index) const noexcept;
         size_t meshCount() const noexcept {
             return count("meshes");
         }
+        std::vector<Mesh> meshes() const noexcept;
 
         Camera camera(size_t index) const noexcept;
         size_t cameraCount() const noexcept {
             return count("cameras");
         }
+        std::vector<Camera> cameras() const noexcept;
 
         Accessor accessor(size_t index) const noexcept;
         size_t accessorCount() const noexcept {
             return count("accessors");
         }
+        std::vector<Accessor> accessors() const noexcept;
 
         Buffer buffer(size_t index) const noexcept;
         size_t bufferCount() const noexcept {
             return count("buffers");
         }
+        std::vector<Buffer> buffers() const noexcept;
 
         BufferView bufferView(size_t index) const noexcept;
         size_t bufferViewCount() const noexcept {
             return count("bufferViews");
         }
+        std::vector<BufferView> bufferViews() const noexcept;
 
         Animation animation(size_t index) const noexcept;
         size_t animationCount() const noexcept {
             return count("animations");
         }
+        std::vector<Animation> animations() const noexcept;
 
         Image image(size_t index) const noexcept;
         size_t imageCount() const noexcept {
             return count("images");
         }
+        std::vector<Image> images() const noexcept;
 
         Texture texture(size_t index) const noexcept;
         size_t textureCount() const noexcept {
             return count("textures");
         }
+        std::vector<Texture> textures() const noexcept;
 
         Sampler sampler(size_t index) const noexcept;
         size_t samplerCount() const noexcept {
             return count("samplers");
         }
+        std::vector<Sampler> samplers() const noexcept;
 
         Material material(size_t index) const noexcept;
         size_t materialCount() const noexcept {
             return count("materials");
         }
+        std::vector<Material> materials() const noexcept;
 
         Skin skin(size_t index) const noexcept;
         size_t skinCount() const noexcept {
             return count("skins");
         }
+        std::vector<Skin> skins() const noexcept;
 
         Asset asset() const noexcept;
 
@@ -437,7 +449,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     template<typename T>
-    static std::vector<T> getVector(const JsonValue* ptr, const char* key) {
+    static std::vector<T> getIndexVector(const JsonValue* ptr, const char* key) {
         std::vector<T> vec;
         if (ptr != nullptr) {
             auto it = ptr->FindMember(key);
@@ -492,6 +504,22 @@ namespace LAZY_GLTF2_NAMESPACE {
             }
         }
         return T();
+    }
+
+    template<typename T>
+    static std::vector<T> getObjectVector(const Gltf* gltf, const char* key) {
+        std::vector<T> vec;
+        const auto* doc = gltf->doc();
+        const auto& it = doc->FindMember(key);
+        if (it != doc->MemberEnd() && it->value.IsArray()) {
+            const auto size = it->value.Size();
+            vec.reserve(size);
+            for (size_t i = 0; i < size; ++i) {
+                const auto& v = it->value[i];
+                vec.emplace_back(gltf, &v);
+            }
+        }
+        return vec;
     }
 
     static std::vector<const char*> getKeys(const JsonValue* ptr, const char* key) {
@@ -752,7 +780,7 @@ namespace LAZY_GLTF2_NAMESPACE {
             return count("children");
         }
         std::vector<size_t> children() const noexcept {
-            return getVector<size_t>(m_json, "children");
+            return getIndexVector<size_t>(m_json, "children");
         }
         std::vector<size_t> nodes() const noexcept {
             return children();
@@ -819,7 +847,7 @@ namespace LAZY_GLTF2_NAMESPACE {
         }
 
         std::vector<size_t> nodes() const noexcept {
-            return getVector<size_t>(m_json, "nodes");
+            return getIndexVector<size_t>(m_json, "nodes");
         }
     };
 
@@ -1290,7 +1318,7 @@ namespace LAZY_GLTF2_NAMESPACE {
             return count("joints");
         }
         std::vector<size_t> joints() const noexcept {
-            return getVector<size_t>(m_json, "joints");
+            return getIndexVector<size_t>(m_json, "joints");
         }
     };
 
@@ -1751,52 +1779,104 @@ namespace LAZY_GLTF2_NAMESPACE {
         return findGltfObject<Scene>(this, "scenes", index);
     }
 
+    inline std::vector<Scene> Gltf::scenes() const noexcept {
+        return getObjectVector<Scene>(this, "scenes");
+    }
+
     inline Node Gltf::node(size_t index) const noexcept {
         return findGltfObject<Node>(this, "nodes", index);
+    }
+
+    inline std::vector<Node> Gltf::nodes() const noexcept {
+        return getObjectVector<Node>(this, "nodes");
     }
 
     inline Mesh Gltf::mesh(size_t index) const noexcept {
         return findGltfObject<Mesh>(this, "meshes", index);
     }
 
+    inline std::vector<Mesh> Gltf::meshes() const noexcept {
+        return getObjectVector<Mesh>(this, "meshes");
+    }
+
     inline Camera Gltf::camera(size_t index) const noexcept {
         return findGltfObject<Camera>(this, "cameras", index);
+    }
+
+    inline std::vector<Camera> Gltf::cameras() const noexcept {
+        return getObjectVector<Camera>(this, "cameras");
     }
 
     inline Accessor Gltf::accessor(size_t index) const noexcept {
         return findGltfObject<Accessor>(this, "accessors", index);
     }
 
+    inline std::vector<Accessor> Gltf::accessors() const noexcept {
+        return getObjectVector<Accessor>(this, "accessors");
+    }
+
     inline Buffer Gltf::buffer(size_t index) const noexcept {
         return findGltfObject<Buffer>(this, "buffers", index);
+    }
+
+    inline std::vector<Buffer> Gltf::buffers() const noexcept {
+        return getObjectVector<Buffer>(this, "buffers");
     }
 
     inline BufferView Gltf::bufferView(size_t index) const noexcept {
         return findGltfObject<BufferView>(this, "bufferViews", index);
     }
 
+    inline std::vector<BufferView> Gltf::bufferViews() const noexcept {
+        return getObjectVector<BufferView>(this, "bufferViews");
+    }
+
     inline Animation Gltf::animation(size_t index) const noexcept {
         return findGltfObject<Animation>(this, "animations", index);
+    }
+
+    inline std::vector<Animation> Gltf::animations() const noexcept {
+        return getObjectVector<Animation>(this, "animations");
     }
 
     inline Image Gltf::image(size_t index) const noexcept {
         return findGltfObject<Image>(this, "images", index);
     }
 
+    inline std::vector<Image> Gltf::images() const noexcept {
+        return getObjectVector<Image>(this, "images");
+    }
+
     inline Texture Gltf::texture(size_t index) const noexcept {
         return findGltfObject<Texture>(this, "textures", index);
+    }
+
+    inline std::vector<Texture> Gltf::textures() const noexcept {
+        return getObjectVector<Texture>(this, "textures");
     }
 
     inline Sampler Gltf::sampler(size_t index) const noexcept {
         return findGltfObject<Sampler>(this, "samplers", index);
     }
 
+    inline std::vector<Sampler> Gltf::samplers() const noexcept {
+        return getObjectVector<Sampler>(this, "samplers");
+    }
+
     inline Material Gltf::material(size_t index) const noexcept {
         return findGltfObject<Material>(this, "materials", index);
     }
 
+    inline std::vector<Material> Gltf::materials() const noexcept {
+        return getObjectVector<Material>(this, "materials");
+    }
+
     inline Skin Gltf::skin(size_t index) const noexcept {
         return findGltfObject<Skin>(this, "skins", index);
+    }
+
+    inline std::vector<Skin> Gltf::skins() const noexcept {
+        return getObjectVector<Skin>(this, "skins");
     }
 
     inline Asset Gltf::asset() const noexcept {
@@ -1943,7 +2023,6 @@ namespace LAZY_GLTF2_NAMESPACE {
             std::string path = m_gltf->m_baseDir + uriStr;
             return readBinaryFile(path.c_str(), byteLength(), data);
         }
-        return false;
     }
 }
 

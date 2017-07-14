@@ -28,6 +28,7 @@ int main() {
                 // this child has a camera
                 if (camera.type() == gltf2::Camera::Type::PERSPECTIVE) {
                     auto yfov = camera.perspective().yfov();
+                    std::cout << yfov << std::endl;
                 }
             }
         }
@@ -51,8 +52,8 @@ int main() {
         }
         else if (auto bufferView = image.bufferView()) {
             // image is in the GLB chunk
-            std::vector<unsigned char> data;
-            if (bufferView.buffer().load(data)) {
+            std::vector<unsigned char> imageData;
+            if (bufferView.buffer().load(imageData)) {
                 // Image::createFromFileMemory(data.data(), data.size());
             }
         }

@@ -136,13 +136,11 @@ TEST(gltf, monster) {
     EXPECT_TRUE(gltf.node(1).skin());
 
     // find skin by name
-    {
-        const char* name = "Armature";
-        auto skin = gltf.findSkin(name);
-        EXPECT_TRUE(skin);
-        EXPECT_FALSE(Skin());
-        EXPECT_STREQ(name, skin.name());
-        EXPECT_EQ(skin, gltf.skin(0));
-        EXPECT_EQ(gltf.findSkin(nullptr), Skin());
-    }
+    const char* name = "Armature";
+    skin = gltf.findSkin(name);
+    EXPECT_TRUE(skin);
+    EXPECT_FALSE(Skin());
+    EXPECT_STREQ(name, skin.name());
+    EXPECT_EQ(skin, gltf.skin(0));
+    EXPECT_EQ(gltf.findSkin(nullptr), Skin());
 }
