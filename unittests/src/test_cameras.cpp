@@ -12,27 +12,27 @@ TEST(gltf, cameras) {
     Gltf gltf(CAMERAS_PATH);
     EXPECT_TRUE(gltf);
 
-    EXPECT_EQ(gltf.cameraCount(), 2);
+    EXPECT_EQ(2, gltf.cameraCount());
 
     auto camera1 = gltf.camera(0);
     EXPECT_TRUE(camera1);
-    EXPECT_EQ(camera1.type(), Camera::Type::PERSPECTIVE);
+    EXPECT_EQ(Camera::Type::PERSPECTIVE, camera1.type());
     EXPECT_FALSE(camera1.orthographic());
     auto pers = camera1.perspective();
-    EXPECT_EQ(pers.aspectRatio(), 1.0f);
-    EXPECT_EQ(pers.yfov(), 0.7f);
-    EXPECT_EQ(pers.zfar(), 100.0f);
-    EXPECT_EQ(pers.znear(), 0.01f);
+    EXPECT_EQ(1.0f, pers.aspectRatio());
+    EXPECT_EQ(0.7f, pers.yfov());
+    EXPECT_EQ(100.0f, pers.zfar());
+    EXPECT_EQ(0.01f, pers.znear());
 
     auto camera2 = gltf.camera(1);
     EXPECT_TRUE(camera2);
-    EXPECT_EQ(camera2.type(), Camera::Type::ORTHOGRAPHIC);
+    EXPECT_EQ(Camera::Type::ORTHOGRAPHIC, camera2.type());
     EXPECT_FALSE(camera2.perspective());
     auto ortho = camera2.orthographic();
-    EXPECT_EQ(ortho.xmag(), 1.0f);
-    EXPECT_EQ(ortho.ymag(), 1.0f);
-    EXPECT_EQ(ortho.zfar(), 100.0f);
-    EXPECT_EQ(ortho.znear(), 0.01f);
+    EXPECT_EQ(1.0f, ortho.xmag());
+    EXPECT_EQ(1.0f, ortho.ymag());
+    EXPECT_EQ(100.0f, ortho.zfar());
+    EXPECT_EQ(0.01f, ortho.znear());
 
     EXPECT_FALSE(gltf.camera(2));
 
@@ -41,19 +41,19 @@ TEST(gltf, cameras) {
 
     size_t cameraIndex = 100;
     EXPECT_TRUE(gltf.node(1).camera(cameraIndex));
-    EXPECT_EQ(cameraIndex, 0);
+    EXPECT_EQ(0, cameraIndex);
     EXPECT_TRUE(gltf.node(2).camera(cameraIndex));
-    EXPECT_EQ(cameraIndex, 1);
+    EXPECT_EQ(1, cameraIndex);
     EXPECT_FALSE(gltf.node(0).camera(cameraIndex));
     EXPECT_FALSE(gltf.node(3).camera(cameraIndex));
 
     // scene.nodes
     auto nodes = gltf.scene(0).nodes();
     std::vector<size_t> expectedNodes{ 0,1,2 };
-    EXPECT_EQ(nodes, expectedNodes);
+    EXPECT_EQ(expectedNodes, nodes);
 
     auto cameras = gltf.cameras();
-    EXPECT_EQ(cameras.size(), 2);
-    EXPECT_EQ(cameras[0].type(), Camera::Type::PERSPECTIVE);
-    EXPECT_EQ(cameras[1].type(), Camera::Type::ORTHOGRAPHIC);
+    EXPECT_EQ(2, cameras.size());
+    EXPECT_EQ(Camera::Type::PERSPECTIVE, cameras[0].type());
+    EXPECT_EQ(Camera::Type::ORTHOGRAPHIC, cameras[1].type());
 }

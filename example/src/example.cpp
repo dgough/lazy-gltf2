@@ -20,7 +20,7 @@ int main() {
         auto c = node.child(0);
         // or use operator[]
         c = node[0];
-        // loop through each child index of this node
+        // loop through each child index of the node
         for (const auto& index : node.children()) {
             // look up the child node using this index
             auto child = gltf.node(index);
@@ -48,13 +48,13 @@ int main() {
             // image is in an external file
             std::string imagePath = gltf.baseDir() + image.uri();
             // image loading API not included
-            // Image::createFromFile(imagePath);
+            // Image::createFromFile(imagePath.c_str());
         }
         else if (auto bufferView = image.bufferView()) {
             // image is in the GLB chunk
             std::vector<unsigned char> imageData;
             if (bufferView.buffer().load(imageData)) {
-                // Image::createFromFileMemory(data.data(), data.size());
+                // Image::createFromFileMemory(imageData.data(), imageData.size());
             }
         }
     }
@@ -64,7 +64,10 @@ int main() {
     for (size_t i = 0; i < meshCount; ++i) {
         auto mesh = gltf.mesh(i);
     }
-
+    // or get the meshes as an std::vector<Mesh> and use a range-based for loop
+    for (const auto& mesh : gltf.meshes()) {
+        std::cout << mesh.primitiveCount() << std::endl;
+    }
     // find a node by name
     if (auto chainNode = gltf.findNode("LanternPole_Chain")) {
         // read the translation if it is set
@@ -79,8 +82,5 @@ int main() {
     if (auto material = gltf.scene(0).node(3).mesh().primitive(0).material()) {
 
     }
-#ifdef _MSC_VER
-    std::getchar(); // keep console window open until Return keystroke
-#endif
     return 0;
 }

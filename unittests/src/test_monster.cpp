@@ -24,32 +24,32 @@ TEST(gltf, monster) {
     std::array<float, 3> transActual;
     node.translation(transActual.data());
     for (size_t i = 0; i < transActual.size(); ++i) {
-        EXPECT_FLOAT_EQ(transActual[i], transExpected[i]);
+        EXPECT_FLOAT_EQ(transExpected[i], transActual[i]);
     }
 
     std::array<float, 4> rotExpected{ 0.6116809844970703f, 0.354727566242218f, 0.6117032766342163f, 0.3547307252883911f };
     std::array<float, 4> rotActual;
     node.rotation(rotActual.data());
     for (size_t i = 0; i < rotActual.size(); ++i) {
-        EXPECT_FLOAT_EQ(rotActual[i], rotExpected[i]);
+        EXPECT_FLOAT_EQ(rotExpected[i], rotActual[i]);
     }
 
     std::array<float, 3> scaleExpected{ 0.9999999403953552f, 1.0000001192092896f, 1.0f };
     std::array<float, 3> scaleActual;
     node.scale(scaleActual.data());
     for (size_t i = 0; i < scaleActual.size(); ++i) {
-        EXPECT_FLOAT_EQ(scaleActual[i], scaleExpected[i]);
+        EXPECT_FLOAT_EQ(scaleExpected[i], scaleActual[i]);
     }
 
     auto node2 = scene[0][1];
     EXPECT_TRUE(node2);
     auto mesh = node2.mesh();
     EXPECT_TRUE(mesh);
-    EXPECT_STREQ(mesh.name(), "monster");
-    EXPECT_EQ(mesh.primitiveCount(), 1);
+    EXPECT_STREQ("monster", mesh.name());
+    EXPECT_EQ(1, mesh.primitiveCount());
     auto prim = mesh.primitive(0);
     EXPECT_TRUE(prim);
-    EXPECT_EQ(prim.mode(), Primitive::Mode::TRIANGLES);
+    EXPECT_EQ(Primitive::Mode::TRIANGLES, prim.mode());
 
     EXPECT_TRUE(prim.normal());
     EXPECT_TRUE(prim.position());
@@ -65,44 +65,44 @@ TEST(gltf, monster) {
 
     // animations
     {
-        EXPECT_EQ(gltf.animationCount(), 32);
+        EXPECT_EQ(32, gltf.animationCount());
     }
 
     // images
     {
-        EXPECT_EQ(gltf.imageCount(), 1);
+        EXPECT_EQ(1, gltf.imageCount());
         auto image = gltf.image(0);
         EXPECT_TRUE(image);
-        EXPECT_STREQ(image.uri(), "Monster.jpg");
+        EXPECT_STREQ("Monster.jpg", image.uri());
     }
 
     // textures
-    EXPECT_EQ(gltf.textureCount(), 1);
+    EXPECT_EQ(1, gltf.textureCount());
     EXPECT_FALSE(gltf.texture(1));
     auto texture = gltf.texture(0);
     EXPECT_TRUE(texture);
     auto image = texture.image();
     EXPECT_TRUE(image);
-    EXPECT_STREQ(image.uri(), "Monster.jpg");
+    EXPECT_STREQ("Monster.jpg", image.uri());
     auto sampler = texture.sampler();
     EXPECT_TRUE(sampler);
-    EXPECT_EQ(sampler.magFilter(), Sampler::MagFilter::LINEAR);
-    EXPECT_EQ(sampler.minFilter(), Sampler::MinFilter::NEAREST_MIPMAP_LINEAR);
+    EXPECT_EQ(Sampler::MagFilter::LINEAR, sampler.magFilter());
+    EXPECT_EQ(Sampler::MinFilter::NEAREST_MIPMAP_LINEAR, sampler.minFilter());
     size_t samplerIndex;
     EXPECT_TRUE(texture.sampler(samplerIndex));
-    EXPECT_EQ(samplerIndex, 0);
+    EXPECT_EQ(0, samplerIndex);
 
     // skins
-    EXPECT_EQ(gltf.skinCount(), 1);
+    EXPECT_EQ(1, gltf.skinCount());
     EXPECT_FALSE(gltf.skin(1));
 
     size_t skinIndex = 255;
     EXPECT_TRUE(gltf.node(1).skin(skinIndex));
-    EXPECT_EQ(skinIndex, 0);
+    EXPECT_EQ(0, skinIndex);
 
     size_t meshIndex = 255;
     EXPECT_TRUE(gltf.node(1).mesh(meshIndex));
-    EXPECT_EQ(meshIndex, 0);
+    EXPECT_EQ(0, meshIndex);
 
     auto skin = gltf.skin(0);
     // TODO
@@ -110,20 +110,20 @@ TEST(gltf, monster) {
     EXPECT_TRUE(inverseBindMat);
     size_t inverseIndex;
     EXPECT_TRUE(skin.inverseBindMatrices(inverseIndex));
-    EXPECT_EQ(inverseIndex, 134);
+    EXPECT_EQ(134, inverseIndex);
 
     auto skeleton = skin.skeleton();
     EXPECT_TRUE(skeleton);
-    EXPECT_EQ(skeleton.childCount(), 1);
-    EXPECT_EQ(skeleton.child(0).childCount(), 4);
+    EXPECT_EQ(1, skeleton.childCount());
+    EXPECT_EQ(4, skeleton.child(0).childCount());
     size_t skeletonIndex;
     EXPECT_TRUE(skin.skeleton(skeletonIndex));
-    EXPECT_EQ(skeletonIndex, 2);
+    EXPECT_EQ(2, skeletonIndex);
 
     std::vector<size_t> joints{ 2, 3, 18, 19, 32, 33, 26, 27, 28, 29, 30, 31, 20, 21, 22, 23, 24, 25, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 4, 5, 6, 7 };
-    EXPECT_EQ(skin.jointCount(), joints.size());
+    EXPECT_EQ(joints.size(), skin.jointCount());
     for (size_t i = 0; i < joints.size(); ++i) {
-        EXPECT_EQ(skin.joint(i), joints[i]);
+        EXPECT_EQ(joints[i], skin.joint(i));
     }
 
     std::vector<size_t> jointCopy;
@@ -141,6 +141,6 @@ TEST(gltf, monster) {
     EXPECT_TRUE(skin);
     EXPECT_FALSE(Skin());
     EXPECT_STREQ(name, skin.name());
-    EXPECT_EQ(skin, gltf.skin(0));
-    EXPECT_EQ(gltf.findSkin(nullptr), Skin());
+    EXPECT_EQ(gltf.skin(0), skin);
+    EXPECT_EQ(Skin(), gltf.findSkin(nullptr));
 }

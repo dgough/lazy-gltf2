@@ -26,9 +26,17 @@ TEST(strings, startsWith) {
 }
 
 TEST(strings, dirName) {
-    EXPECT_EQ(dirName(nullptr), "");
-    EXPECT_EQ(dirName("./asdf.txt"), "./");
-    EXPECT_EQ(dirName("a/b/c/asdf.txt"), "a/b/c/");
-    EXPECT_EQ(dirName("glTF-Sample-Models/2.0/Box/glTF/box.gltf"), "glTF-Sample-Models/2.0/Box/glTF/");
-    EXPECT_EQ(dirName("../../../box.gltf"), "../../../");
+    EXPECT_EQ("", dirName(nullptr));
+    EXPECT_EQ("./", dirName("./asdf.txt"));
+    EXPECT_EQ("a/b/c/", dirName("a/b/c/asdf.txt"));
+    EXPECT_EQ("glTF-Sample-Models/2.0/Box/glTF/", dirName("glTF-Sample-Models/2.0/Box/glTF/box.gltf"));
+    EXPECT_EQ("../../../", dirName("../../../box.gltf"));
+}
+
+TEST(base64, readBsae64) {
+    std::vector<unsigned char> data;
+    std::vector<unsigned char> expected{'1','2','3','4','5','6'};
+    EXPECT_TRUE(readBase64("MTIzNDU2", 6, data));
+    EXPECT_EQ(6, data.size());
+    EXPECT_EQ(expected, data);
 }

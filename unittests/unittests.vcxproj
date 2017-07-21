@@ -161,6 +161,7 @@
     <ClCompile Include="src\test_boombox.cpp" />
     <ClCompile Include="src\test_box.cpp" />
     <ClCompile Include="src\test_cameras.cpp" />
+    <ClCompile Include="src\test_duck.cpp" />
     <ClCompile Include="src\test_lantern.cpp" />
     <ClCompile Include="src\test_monster.cpp" />
     <ClCompile Include="src\test_strings.cpp" />

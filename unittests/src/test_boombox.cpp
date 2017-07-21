@@ -15,21 +15,30 @@ TEST(gltf, boombox) {
 
     auto occ = gltf.material(0).occlusionTexture();
     EXPECT_TRUE(occ);
-    EXPECT_EQ(occ.strength(), 1.0f);
-    EXPECT_EQ(occ.index(), 1);
+    EXPECT_EQ(1.0f, occ.strength());
+    EXPECT_EQ(1, occ.index());
     EXPECT_TRUE(occ.texture());
     EXPECT_TRUE(occ.texture().image());
     EXPECT_EQ(occ.texture().image(), occ.texture().source());
     size_t sourceIndex;
     EXPECT_TRUE(occ.texture().source(sourceIndex));
-    EXPECT_EQ(sourceIndex, 1);
+    EXPECT_EQ(1, sourceIndex);
 
-    auto material = gltf.material(0);
+    // material
+    auto material = gltf.findMaterial("BoomBox_Mat");
     EXPECT_TRUE(material);
     auto emissiveTexture = material.emissiveTexture();
     EXPECT_TRUE(emissiveTexture);
-    EXPECT_EQ(emissiveTexture.index(), 3);
+    EXPECT_EQ(3, emissiveTexture.index());
     EXPECT_TRUE(emissiveTexture.texture());
+
+    {
+        const std::array<float, 3> expectedEmissiveFactor{1.0f, 1.0f, 1.0f};
+        std::array<float, 3> actualEmissiveFactor;
+        material.emissiveFactor(actualEmissiveFactor.data());
+        EXPECT_EQ(expectedEmissiveFactor, actualEmissiveFactor);
+        EXPECT_EQ(expectedEmissiveFactor, material.emissiveFactor());
+    }
 }
 
 TEST(gltf, boombox_multiple) {
@@ -40,10 +49,10 @@ TEST(gltf, boombox_multiple) {
         // the images in this glb use BufferView instead of uri
         auto image = binGltf.image(0);
         EXPECT_TRUE(image);
-        EXPECT_EQ(image.uri(), nullptr);
+        EXPECT_EQ(nullptr, image.uri());
         size_t index = 500;
         EXPECT_TRUE(image.bufferView(index));
-        EXPECT_EQ(index, 0);
+        EXPECT_EQ(0, index);
         auto bufferView = image.bufferView();
         EXPECT_TRUE(bufferView);
     }

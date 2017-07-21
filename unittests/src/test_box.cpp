@@ -10,12 +10,13 @@ static const char* BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF/Box.gltf
 static const char* BINARY_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-Binary/Box.glb";
 static const char* BASE64_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-Embedded/Box.gltf";
 static const char* PBR_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-pbrSpecularGlossiness/Box.gltf";
+static const char* MAT_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-MaterialsCommon/Box.gltf";
 
 void testBoxCommon(Gltf& gltf) {
     // counts
-    EXPECT_EQ(gltf.nodeCount(), 2);
-    EXPECT_EQ(gltf.meshCount(), 1);
-    EXPECT_EQ(gltf.sceneCount(), 1);
+    EXPECT_EQ(2, gltf.nodeCount());
+    EXPECT_EQ(1, gltf.meshCount());
+    EXPECT_EQ(1, gltf.sceneCount());
 
     EXPECT_TRUE(gltf.node(0));
     EXPECT_TRUE(gltf.node(1));
@@ -27,27 +28,27 @@ void testBoxCommon(Gltf& gltf) {
 
     // scene
     auto scene = gltf.defaultScene();
-    EXPECT_EQ(scene.nodeCount(), 1);
+    EXPECT_EQ(1, scene.nodeCount());
     EXPECT_TRUE(scene.node(0));
     EXPECT_TRUE(scene[0]);
 
     // asset
     auto asset = gltf.asset();
     EXPECT_TRUE(asset);
-    EXPECT_STREQ(asset.version(), "2.0");
-    EXPECT_STREQ(asset.generator(), "COLLADA2GLTF");
-    EXPECT_EQ(asset.copyright(), nullptr);
-    EXPECT_EQ(asset.minVersion(), nullptr);
+    EXPECT_STREQ("2.0", asset.version());
+    EXPECT_STREQ("COLLADA2GLTF", asset.generator());
+    EXPECT_EQ(nullptr, asset.copyright());
+    EXPECT_EQ(nullptr, asset.minVersion());
 
 
     auto mesh = gltf.node(0).child(0).mesh();
     EXPECT_TRUE(mesh);
-    EXPECT_STREQ(mesh.name(), "Mesh");
+    EXPECT_STREQ("Mesh", mesh.name());
     const size_t expectedPrimitiveCount = 1;
-    EXPECT_EQ(mesh.primitiveCount(), expectedPrimitiveCount);
+    EXPECT_EQ(expectedPrimitiveCount, mesh.primitiveCount());
     EXPECT_FALSE(mesh.primitive(expectedPrimitiveCount));
     auto prim = mesh.primitive(0);
-    EXPECT_EQ(prim.attributeCount(), 2);
+    EXPECT_EQ(2, prim.attributeCount());
     EXPECT_TRUE(prim.attribute("NORMAL"));
     EXPECT_TRUE(prim.attribute("POSITION"));
     EXPECT_TRUE(prim.normal());
@@ -55,15 +56,18 @@ void testBoxCommon(Gltf& gltf) {
     EXPECT_TRUE(prim.material());
     size_t materialIndex;
     EXPECT_TRUE(prim.material(materialIndex));
-    EXPECT_EQ(materialIndex, 0);
+    EXPECT_EQ(0, materialIndex);
     {
         // indices
         auto indices = prim.indices();
         EXPECT_TRUE(indices);
-        EXPECT_EQ(indices.componentType(), Accessor::ComponentType::UNSIGNED_SHORT);
-        EXPECT_EQ(indices.type(), Accessor::Type::SCALAR);
-        EXPECT_EQ(indices.count(), 36);
+        EXPECT_EQ(Accessor::ComponentType::UNSIGNED_SHORT, indices.componentType());
+        EXPECT_EQ(Accessor::Type::SCALAR, indices.type());
+        EXPECT_EQ(36, indices.count());
     }
+    // primitives
+    auto primitives = mesh.primitives();
+    EXPECT_EQ(1, primitives.size());
 
     auto c1 = gltf.node(0).child(0);
     auto c2 = gltf.node(1);
@@ -78,87 +82,106 @@ void testBoxCommon(Gltf& gltf) {
 
     // accessors
     EXPECT_FALSE(gltf.accessor(324));
-    EXPECT_EQ(gltf.accessorCount(), 3);
+    EXPECT_EQ(3, gltf.accessorCount());
 
     {
         auto accessor = gltf.accessor(0);
         EXPECT_TRUE(accessor);
-        EXPECT_EQ(accessor.type(), Accessor::Type::SCALAR);
-        EXPECT_EQ(accessor.byteOffset(), 0);
+        EXPECT_EQ(Accessor::Type::SCALAR, accessor.type());
+        EXPECT_EQ(0, accessor.byteOffset());
         EXPECT_FALSE(accessor.normalized());
-        EXPECT_EQ(accessor.count(), 36);
-        EXPECT_EQ(accessor.max(0), 23);
-        EXPECT_EQ(accessor.maxCount(), 1);
+        EXPECT_EQ(36, accessor.count());
+        EXPECT_EQ(23, accessor.max(0));
+        EXPECT_EQ(1, accessor.maxCount());
         auto bufferView = accessor.bufferView();
         EXPECT_TRUE(bufferView);
         size_t index;
         EXPECT_TRUE(accessor.bufferView(index));
-        EXPECT_EQ(index, 0);
+        EXPECT_EQ(0, index);
     }
     {
         auto accessor = gltf.accessor(1);
         EXPECT_TRUE(accessor);
-        EXPECT_EQ(accessor.type(), Accessor::Type::VEC3);
-        EXPECT_EQ(accessor.byteOffset(), 0);
+        EXPECT_EQ(Accessor::Type::VEC3, accessor.type());
+        EXPECT_EQ(0, accessor.byteOffset());
         EXPECT_FALSE(accessor.normalized());
-        EXPECT_EQ(accessor.count(), 24);
-        EXPECT_EQ(accessor.maxCount(), 3);
-        EXPECT_EQ(accessor.max(0), 1.0f);
+        EXPECT_EQ(24, accessor.count());
+        // max
+        EXPECT_EQ(3, accessor.maxCount());
+        EXPECT_EQ(1.0f, accessor.max(0));
+        std::vector<float> expectedMax{ 1.0f, 1.0f, 1.0f };
+        EXPECT_EQ(expectedMax, accessor.max());
         size_t index;
         EXPECT_TRUE(accessor.bufferView(index));
-        EXPECT_EQ(index, 1);
+        EXPECT_EQ(1, index);
+        // min
+        std::vector<float> expectedMin{ -1.0f, -1.0f, -1.0f };
+        EXPECT_EQ(expectedMin, accessor.min());
     }
     {
         auto accessor = gltf.accessor(2);
         EXPECT_TRUE(accessor);
-        EXPECT_EQ(accessor.type(), Accessor::Type::VEC3);
-        EXPECT_EQ(accessor.byteOffset(), 288);
+        EXPECT_EQ(Accessor::Type::VEC3, accessor.type());
+        EXPECT_EQ(288, accessor.byteOffset());
         EXPECT_FALSE(accessor.normalized());
-        EXPECT_EQ(accessor.count(), 24);
-        EXPECT_EQ(accessor.maxCount(), 3);
-        EXPECT_EQ(accessor.max(0), 0.5f);
+        EXPECT_EQ(24, accessor.count());
+        EXPECT_EQ(3, accessor.maxCount());
+        EXPECT_EQ(0.5f, accessor.max(0));
         size_t index;
         EXPECT_TRUE(accessor.bufferView(index));
-        EXPECT_EQ(index, 1);
+        EXPECT_EQ(1, index);
     }
 
     // bufferViews
     {
-        EXPECT_EQ(gltf.bufferViewCount(), 2);
+        EXPECT_EQ(2, gltf.bufferViewCount());
         EXPECT_FALSE(gltf.bufferView(2));
         auto bufferView = gltf.bufferView(0);
         EXPECT_TRUE(bufferView);
         EXPECT_TRUE(bufferView.buffer());
-        EXPECT_EQ(bufferView.byteOffset(), 576);
-        EXPECT_EQ(bufferView.byteLength(), 72);
+        EXPECT_EQ(576, bufferView.byteOffset());
+        EXPECT_EQ(72, bufferView.byteLength());
         EXPECT_TRUE(bufferView.hasTarget());
-        EXPECT_EQ(bufferView.target(), BufferView::Target::ELEMENT_ARRAY_BUFFER);
+        EXPECT_EQ(BufferView::Target::ELEMENT_ARRAY_BUFFER, bufferView.target());
 
         size_t index;
         EXPECT_TRUE(bufferView.buffer(index));
-        EXPECT_EQ(index, 0);
+        EXPECT_EQ(0, index);
     }
     {
         auto bufferView = gltf.bufferView(1);
         EXPECT_TRUE(bufferView);
         EXPECT_TRUE(bufferView.buffer());
-        EXPECT_EQ(bufferView.byteOffset(), 0);
-        EXPECT_EQ(bufferView.byteLength(), 576);
-        EXPECT_EQ(bufferView.byteStride(), 12);
+        EXPECT_EQ(0, bufferView.byteOffset());
+        EXPECT_EQ(576, bufferView.byteLength());
+        EXPECT_EQ(12, bufferView.byteStride());
         EXPECT_TRUE(bufferView.hasTarget());
-        EXPECT_EQ(bufferView.target(), BufferView::Target::ARRAY_BUFFER);
+        EXPECT_EQ(BufferView::Target::ARRAY_BUFFER, bufferView.target());
     }
     // animations
-    EXPECT_EQ(gltf.animationCount(), 0);
+    EXPECT_EQ(0, gltf.animationCount());
 
-    // 
-    EXPECT_EQ(numberOfComponents(Accessor::Type::SCALAR), 1);
-    EXPECT_EQ(numberOfComponents(Accessor::Type::VEC2), 2);
-    EXPECT_EQ(numberOfComponents(Accessor::Type::VEC3), 3);
-    EXPECT_EQ(numberOfComponents(Accessor::Type::VEC4), 4);
-    EXPECT_EQ(numberOfComponents(Accessor::Type::MAT2), 4);
-    EXPECT_EQ(numberOfComponents(Accessor::Type::MAT3), 9);
-    EXPECT_EQ(numberOfComponents(Accessor::Type::MAT4), 16);
+    auto material = gltf.findMaterial("Red");
+    EXPECT_TRUE(material);
+    std::array<float, 3> expectedEmissiveFactor{ 0.0f, 0.0f, 0.0f };
+    EXPECT_EQ(expectedEmissiveFactor, material.emissiveFactor());
+    auto roughness = material.pbrMetallicRoughness();
+    EXPECT_TRUE(roughness);
+    std::array<float, 4> expectedBaseColorFactor{ 0.800000011920929f, 0.0f, 0.0f, 1.0f };
+    std::array<float, 4> actualBaseColorFactor;
+    EXPECT_TRUE(roughness.baseColorFactor(actualBaseColorFactor.data()));
+    EXPECT_EQ(expectedBaseColorFactor, actualBaseColorFactor);
+    EXPECT_EQ(actualBaseColorFactor, roughness.baseColorFactor());
+    EXPECT_EQ(0.0f, roughness.metallicFactor());
+
+    // numberOfComponents
+    EXPECT_EQ(1, numberOfComponents(Accessor::Type::SCALAR));
+    EXPECT_EQ(2, numberOfComponents(Accessor::Type::VEC2));
+    EXPECT_EQ(3, numberOfComponents(Accessor::Type::VEC3));
+    EXPECT_EQ(4, numberOfComponents(Accessor::Type::VEC4));
+    EXPECT_EQ(4, numberOfComponents(Accessor::Type::MAT2));
+    EXPECT_EQ(9, numberOfComponents(Accessor::Type::MAT3));
+    EXPECT_EQ(16, numberOfComponents(Accessor::Type::MAT4));
 }
 
 TEST(gltf, box) {
@@ -169,12 +192,12 @@ TEST(gltf, box) {
 
     // buffers
     {
-        EXPECT_EQ(gltf.bufferCount(), 1);
+        EXPECT_EQ(1, gltf.bufferCount());
         EXPECT_FALSE(gltf.buffer(1));
         auto buffer = gltf.buffer(0);
         EXPECT_TRUE(buffer);
-        EXPECT_EQ(buffer.byteLength(), 648);
-        EXPECT_STREQ(buffer.uri(), "Box0.bin");
+        EXPECT_EQ(648, buffer.byteLength());
+        EXPECT_STREQ("Box0.bin", buffer.uri());
     }
 
     EXPECT_EQ(gltf.baseDir(), std::string(BOX_PATH, strlen(BOX_PATH) - 8));
@@ -230,10 +253,30 @@ TEST(gltf, compare_buffers) {
     EXPECT_TRUE(b3.load(v3));
     EXPECT_EQ(v1, v2);
     EXPECT_EQ(v1, v3);
+
+    // compare gltf objects
+    EXPECT_EQ(g1, g1);
+    EXPECT_NE(g1, g2);
+    EXPECT_NE(g1, g3);
+    EXPECT_NE(g1, Gltf());
 }
 
 TEST(gltf, box_pbr) {
     Gltf gltf(PBR_BOX_PATH);
     EXPECT_TRUE(gltf);
+    auto extensionsUsed = gltf.extensionsUsed();
+    EXPECT_EQ(1, extensionsUsed.size());
+    EXPECT_STREQ("KHR_materials_pbrSpecularGlossiness", extensionsUsed[0]);
+}
 
+TEST(gltf, box_mat) {
+    Gltf gltf;
+    EXPECT_TRUE(gltf.load(MAT_BOX_PATH));
+    auto extensionsUsed = gltf.extensionsUsed();
+    EXPECT_EQ(1, extensionsUsed.size());
+    EXPECT_STREQ("KHR_materials_common", extensionsUsed[0]);
+
+    auto extensionsRequired = gltf.extensionsRequired();
+    EXPECT_EQ(1, extensionsRequired.size());
+    EXPECT_STREQ("KHR_materials_common", extensionsRequired[0]);
 }

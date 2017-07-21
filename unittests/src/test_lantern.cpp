@@ -14,28 +14,28 @@ TEST(gltf, lantern) {
 
     // meshes
     const size_t expectedMeshCount = 3;
-    EXPECT_EQ(gltf.meshCount(), expectedMeshCount);
+    EXPECT_EQ(expectedMeshCount, gltf.meshCount());
     EXPECT_FALSE(gltf.mesh(expectedMeshCount));
 
     auto body = gltf.mesh(0);
     EXPECT_TRUE(body);
-    EXPECT_STREQ(body.name(), "LanternPole_Body");
-    EXPECT_EQ(body.primitiveCount(), 1);
+    EXPECT_STREQ("LanternPole_Body", body.name());
+    EXPECT_EQ(1, body.primitiveCount());
     auto bodyPrim = body.primitive(0);
     EXPECT_FALSE(bodyPrim.texcoord(5));
 
-    EXPECT_EQ(bodyPrim.attributeCount(), 4);
+    EXPECT_EQ(4, bodyPrim.attributeCount());
 
     for (const auto& key : bodyPrim.attributeStrings()) {
         EXPECT_TRUE(bodyPrim.attribute(key));
     }
     auto attributes = bodyPrim.attributes();
-    EXPECT_EQ(attributes.size(), 4);
+    EXPECT_EQ(4, attributes.size());
     if (attributes.size() >= 4) {
-        EXPECT_EQ(attributes[0].second, 0);
-        EXPECT_EQ(attributes[1].second, 1);
-        EXPECT_EQ(attributes[2].second, 2);
-        EXPECT_EQ(attributes[3].second, 3);
+        EXPECT_EQ(0, attributes[0].second);
+        EXPECT_EQ(1, attributes[1].second);
+        EXPECT_EQ(2, attributes[2].second);
+        EXPECT_EQ(3, attributes[3].second);
     }
 
     EXPECT_TRUE(bodyPrim.position());
@@ -46,67 +46,67 @@ TEST(gltf, lantern) {
     {
         auto& prim = bodyPrim;
         auto position = prim.position();
-        EXPECT_EQ(position.componentType(), Accessor::ComponentType::FLOAT);
-        EXPECT_EQ(position.count(), 926);
-        EXPECT_EQ(position.type(), Accessor::Type::VEC3);
+        EXPECT_EQ(Accessor::ComponentType::FLOAT, position.componentType());
+        EXPECT_EQ(926, position.count());
+        EXPECT_EQ(Accessor::Type::VEC3, position.type());
 
         std::array<float, 3> max;
         position.max(max.data(), max.size());
-        EXPECT_FLOAT_EQ(max[0], 7.74559927f);
-        EXPECT_FLOAT_EQ(max[1], 12.8321095f);
-        EXPECT_FLOAT_EQ(max[2], 2.31570983f);
+        EXPECT_FLOAT_EQ(7.74559927f, max[0]);
+        EXPECT_FLOAT_EQ(12.8321095f, max[1]);
+        EXPECT_FLOAT_EQ(2.31570983f, max[2]);
 
         std::array<float, 3> min;
         position.min(min.data(), min.size());
-        EXPECT_FLOAT_EQ(min[0], 7.74559927f);
-        EXPECT_FLOAT_EQ(min[1], 12.8321095f);
-        EXPECT_FLOAT_EQ(min[2], 2.31570983f);
+        EXPECT_FLOAT_EQ(7.74559927f, min[0]);
+        EXPECT_FLOAT_EQ(12.8321095f, min[1]);
+        EXPECT_FLOAT_EQ(2.31570983f, min[2]);
     }
 
     // indices
     size_t indicesIndex;
     EXPECT_TRUE(gltf.mesh(0).primitive(0).indices(indicesIndex));
-    EXPECT_EQ(indicesIndex, 4);
+    EXPECT_EQ(4, indicesIndex);
 
     // material
     const size_t expectedMaterialCount = 1;
-    EXPECT_EQ(gltf.materialCount(), expectedMaterialCount);
+    EXPECT_EQ(expectedMaterialCount, gltf.materialCount());
     EXPECT_FALSE(gltf.material(expectedMaterialCount));
     auto material = gltf.material(0);
     EXPECT_TRUE(material);
     auto normalTexture = material.normalTexture();
     EXPECT_TRUE(normalTexture);
-    EXPECT_EQ(normalTexture.index(), 2);
+    EXPECT_EQ(2, normalTexture.index());
     EXPECT_TRUE(normalTexture.texture());
 
     std::array<float, 3> emissiveFactorActual;
     std::array<float, 3> emissiveFactorExpected = { 1.0f, 1.0f, 1.0f };
     material.emissiveFactor(emissiveFactorActual.data());
-    EXPECT_EQ(emissiveFactorActual, emissiveFactorExpected);
+    EXPECT_EQ(emissiveFactorExpected, emissiveFactorActual);
     EXPECT_TRUE(gltf.defaultScene()[0][0].mesh().primitive(0).material());
 
     // pbrMetallicRoughness
     auto roughness = material.pbrMetallicRoughness();
     EXPECT_TRUE(roughness);
-    EXPECT_EQ(roughness.metallicFactor(), 1.0f);
-    EXPECT_EQ(roughness.roughnessFactor(), 1.0f);
+    EXPECT_EQ(1.0f, roughness.metallicFactor());
+    EXPECT_EQ(1.0f, roughness.roughnessFactor());
     {
         std::array<float, 4> expected = { 0.214041144f, 0.214041144f, 0.214041144f, 1.0f };
         std::array<float, 4> actual;
         roughness.baseColorFactor(actual.data());
-        EXPECT_EQ(actual, expected);
+        EXPECT_EQ(expected, actual);
     }
     {
         auto baseColorTextureInfo = roughness.baseColorTexture();
         EXPECT_TRUE(baseColorTextureInfo);
-        EXPECT_EQ(baseColorTextureInfo.index(), 0);
+        EXPECT_EQ(0, baseColorTextureInfo.index());
         EXPECT_TRUE(baseColorTextureInfo.texture());
         EXPECT_EQ(baseColorTextureInfo.texture(), gltf.texture(baseColorTextureInfo.index()));
     }
     {
         auto metallicInfo = roughness.metallicRoughnessTexture();
         EXPECT_TRUE(metallicInfo);
-        EXPECT_EQ(metallicInfo.index(), 1);
+        EXPECT_EQ(1, metallicInfo.index());
         EXPECT_TRUE(metallicInfo.texture());
         EXPECT_EQ(metallicInfo.texture(), gltf.texture(metallicInfo.index()));
     }
@@ -116,8 +116,8 @@ TEST(gltf, lantern) {
         auto node = gltf.defaultScene()[0];
         auto children = node.children();
         std::vector<size_t> expected{ 0, 1, 2 };
-        EXPECT_EQ(children, expected);
-        EXPECT_EQ(children.size(), node.childCount());
+        EXPECT_EQ(expected, children);
+        EXPECT_EQ(node.childCount(), children.size());
         EXPECT_EQ(node.nodes(), node.children());
     }
 
@@ -125,8 +125,8 @@ TEST(gltf, lantern) {
     const char* nodeName = "LanternPole_Lantern";
     auto poleNode = gltf.findNode(nodeName);
     EXPECT_TRUE(poleNode);
-    EXPECT_STREQ(poleNode.name(), nodeName);
-    EXPECT_STRNE(poleNode.name(), "asdf");
+    EXPECT_STREQ(nodeName, poleNode.name());
+    EXPECT_STRNE("asdf", poleNode.name());
 
     // object comparison
     EXPECT_EQ(poleNode, gltf.node(2));
@@ -144,15 +144,15 @@ TEST(gltf, lantern) {
         EXPECT_STREQ(mesh.name(), meshName);
         EXPECT_STRNE(mesh.name(), "asdf");
         EXPECT_NE(mesh, gltf.mesh(0));
-        EXPECT_NE(mesh, Mesh());
+        EXPECT_NE(Mesh(), mesh);
     }
     // find material by name
     const char* matName = "LanternPost_Mat";
     material = gltf.findMaterial(matName);
     EXPECT_TRUE(material);
-    EXPECT_EQ(material, gltf.material(0));
+    EXPECT_EQ(gltf.material(0), material);
     EXPECT_FALSE(gltf.findMaterial(nullptr));
-    EXPECT_EQ(gltf.findMaterial(nullptr), Material());
+    EXPECT_EQ(Material(), gltf.findMaterial(nullptr));
 
     // vectors
     EXPECT_EQ(gltf.scenes().size(), gltf.sceneCount());

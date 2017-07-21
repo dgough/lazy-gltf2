@@ -21,9 +21,12 @@
 #endif
 
 #define LAZY_GLTF2_DATA_APP_BASE64 "data:application/octet-stream;base64,"
+#define LAZY_GLTF2_DATA_IMAGE_JPG "data:image/jpeg;base64,"
+#define LAZY_GLTF2_DATA_IMAGE_PNG "data:image/png;base64,"
 #define RAPIDJSON_NO_SIZETYPEDEFINE
 namespace rapidjson { typedef ::std::size_t SizeType; }
 
+// Requires rapidjson from https://github.com/miloyip/rapidjson
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 #include <rapidjson/istreamwrapper.h>
@@ -55,6 +58,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Gltf;
     class Channel;
 
+    // functor for automatically closing a file with a unique_ptr
     struct FileCloser {
         void operator()(FILE* fp) {
             if (fp != nullptr) {
@@ -118,16 +122,17 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     /// The root glTF object.
-    /// Use this class to load a file.
-    class Gltf final {
+    /// Use this class to load a gltf or glb file.
+    class Gltf {
     public:
-        Gltf() {}
+        Gltf() = default;
         /// Creates a Gltf object and loads a file.
         /// @param path Path to the file to load.
         explicit Gltf(const char* path) {
             load(path);
         }
-        ~Gltf() = default;
+        virtual ~Gltf() = default;
+
         // support moving
         Gltf(Gltf&&) = default;
         Gltf& operator=(Gltf&&) = default;
@@ -144,7 +149,7 @@ namespace LAZY_GLTF2_NAMESPACE {
         /// Returns the base directory of the file that was loaded.
         /// The path will use forward slashes regardless of OS.
         /// If you opened "res/box.gltf" then the returned string will be "res/"
-        const std::string& baseDir() {
+        const std::string& baseDir() const {
             return m_baseDir;
         }
 
@@ -254,18 +259,26 @@ namespace LAZY_GLTF2_NAMESPACE {
 
         /// Finds a node by name.
         Node findNode(const char* name);
+        /// Finds a mesh by name.
         Mesh findMesh(const char* name);
+        /// Finds a skin by name.
         Skin findSkin(const char* name);
+        /// Finds a material by name.
         Material findMaterial(const char* name);
+
+        std::vector<const char*> extensionsRequired() const noexcept;
+        std::vector<const char*> extensionsUsed() const noexcept;
+
+        template<typename T>
+        bool loadGlbData(std::vector<T>& data) const noexcept;
 
         /// Returns a pointer to the json document. May be null.
         const JsonDocument* doc() const noexcept {
             return m_doc.get();
         }
 
-        // TODO friend operator==
-        friend class Buffer;
-
+        friend bool operator==(const Gltf& lhs, const Gltf& rhs);
+        friend bool operator!=(const Gltf& lhs, const Gltf& rhs);
     private:
 
         /// Class that holds the GLB meta data.
@@ -313,8 +326,6 @@ namespace LAZY_GLTF2_NAMESPACE {
         }
 
         bool loadGlbMetaData(const char* path);
-        template<typename T>
-        bool loadGlbData(std::vector<T>& data) const noexcept;
 
         void clear() noexcept {
             m_doc.reset(nullptr);
@@ -327,13 +338,21 @@ namespace LAZY_GLTF2_NAMESPACE {
         std::string m_baseDir;
     };
 
+    inline bool operator==(const Gltf& lhs, const Gltf& rhs) {
+        return lhs.m_doc == rhs.m_doc && lhs.m_glb == rhs.m_glb && lhs.m_baseDir == rhs.m_baseDir;
+    }
+
+    inline bool operator!=(const Gltf& lhs, const Gltf& rhs) {
+        return !(lhs == rhs);
+    }
+
     // functions
 
     static inline char lowercase(char ch) {
         return ch >= 'A' && ch <= 'Z' ? ch | 0x20 : ch;
     }
 
-    /// Returns true if subject starts with prefix.
+    /// Returns true if subject starts with prefix. Case sensitive.
     inline bool startsWith(const char* subject, const char* prefix) {
         if (subject == prefix) {
             return true;
@@ -382,10 +401,10 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     template<typename T>
-    static bool findNumber(const JsonValue* ptr, const char* key, T& value) {
-        if (ptr != nullptr) {
-            auto it = ptr->FindMember(key);
-            if (it != ptr->MemberEnd() && it->value.IsNumber()) {
+    static bool findNumber(const JsonValue* json, const char* key, T& value) {
+        if (json != nullptr) {
+            auto it = json->FindMember(key);
+            if (it != json->MemberEnd() && it->value.IsNumber()) {
                 value = it->value.Get<T>();
                 return true;
             }
@@ -394,10 +413,10 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     template<typename T>
-    static bool findNumber(const JsonValue* ptr, const char* key, size_t index, T& value) {
-        if (ptr != nullptr) {
-            auto it = ptr->FindMember(key);
-            if (it != ptr->MemberEnd() && it->value.IsArray() && index < it->value.Size()) {
+    static bool findNumber(const JsonValue* json, const char* key, size_t index, T& value) {
+        if (json != nullptr) {
+            auto it = json->FindMember(key);
+            if (it != json->MemberEnd() && it->value.IsArray() && index < it->value.Size()) {
                 const auto& v = it->value[index];
                 if (v.IsNumber()) {
                     value = v.Get<T>();
@@ -409,10 +428,10 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     template<typename T>
-    static T findNumberOrDefault(const JsonValue* ptr, const char* key, T defaultValue) {
-        if (ptr != nullptr) {
-            auto it = ptr->FindMember(key);
-            if (it != ptr->MemberEnd() && it->value.IsNumber()) {
+    static T findNumberOrDefault(const JsonValue* json, const char* key, T defaultValue) {
+        if (json != nullptr) {
+            auto it = json->FindMember(key);
+            if (it != json->MemberEnd() && it->value.IsNumber()) {
                 return it->value.Get<T>();
             }
         }
@@ -420,10 +439,10 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     template<typename T>
-    static T findNumberOrDefault(const JsonValue* ptr, const char* key, size_t index, T defaultValue) {
-        if (ptr != nullptr) {
-            auto it = ptr->FindMember(key);
-            if (it != ptr->MemberEnd() && it->value.IsArray() && index < it->value.Size()) {
+    static T findNumberOrDefault(const JsonValue* json, const char* key, size_t index, T defaultValue) {
+        if (json != nullptr) {
+            auto it = json->FindMember(key);
+            if (it != json->MemberEnd() && it->value.IsArray() && index < it->value.Size()) {
                 const auto& v = it->value[index];
                 if (v.IsNumber()) {
                     return v.Get<T>();
@@ -434,10 +453,10 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     template<typename T>
-    static bool findNumberInMap(const JsonValue* ptr, const char* key1, const char* key2, T& value) {
-        if (ptr != nullptr) {
-            auto it = ptr->FindMember(key1);
-            if (it != ptr->MemberEnd() && it->value.IsObject()) {
+    static bool findNumberInMap(const JsonValue* json, const char* key1, const char* key2, T& value) {
+        if (json != nullptr) {
+            auto it = json->FindMember(key1);
+            if (it != json->MemberEnd() && it->value.IsObject()) {
                 auto it2 = it->value.FindMember(key2);
                 if (it2 != it->value.MemberEnd() && it2->value.IsNumber()) {
                     value = it2->value.Get<T>();
@@ -449,16 +468,16 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     template<typename T>
-    static std::vector<T> getIndexVector(const JsonValue* ptr, const char* key) {
+    static std::vector<T> getNumberVector(const JsonValue* json, const char* key) {
         std::vector<T> vec;
-        if (ptr != nullptr) {
-            auto it = ptr->FindMember(key);
-            if (it != ptr->MemberEnd() && it->value.IsArray()) {
+        if (json != nullptr) {
+            auto it = json->FindMember(key);
+            if (it != json->MemberEnd() && it->value.IsArray()) {
                 const size_t size = it->value.Size();
                 for (size_t index = 0; index < size; ++index) {
                     const auto& v = it->value[index];
                     if (v.IsNumber()) {
-                        vec.push_back(v.Get<size_t>());
+                        vec.push_back(v.Get<T>());
                     }
                 }
             }
@@ -467,10 +486,10 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     template<typename T>
-    static T findObject(const Gltf* gltf, const JsonValue* ptr, const char* key) {
-        if (ptr != nullptr) {
-            auto it = ptr->FindMember(key);
-            if (it != ptr->MemberEnd() && it->value.IsObject()) {
+    static T findObject(const Gltf* gltf, const JsonValue* json, const char* key) {
+        if (json != nullptr) {
+            auto it = json->FindMember(key);
+            if (it != json->MemberEnd() && it->value.IsObject()) {
                 return T(gltf, &it->value);
             }
         }
@@ -478,10 +497,10 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     template<typename T>
-    static T findObject(const Gltf* gltf, const JsonValue* ptr, const char* key, size_t index) {
-        if (ptr != nullptr) {
-            auto it = ptr->FindMember(key);
-            if (it != ptr->MemberEnd() && it->value.IsArray() && index < it->value.Size()) {
+    static T findObject(const Gltf* gltf, const JsonValue* json, const char* key, size_t index) {
+        if (json != nullptr) {
+            auto it = json->FindMember(key);
+            if (it != json->MemberEnd() && it->value.IsArray() && index < it->value.Size()) {
                 const auto& v = it->value[index];
                 if (v.IsObject()) {
                     return T(gltf, &v);
@@ -493,10 +512,14 @@ namespace LAZY_GLTF2_NAMESPACE {
 
     template<typename T>
     static T findGltfObject(const Gltf* gltf, const char* key, size_t index) {
-        const auto doc = gltf->doc();
-        if (doc) {
-            const auto it = doc->FindMember(key);
-            if (it != doc->MemberEnd()) {
+        return findGltfObject<T>(gltf, gltf->doc(), key, index);
+    }
+
+    template<typename T>
+    static T findGltfObject(const Gltf* gltf, const JsonValue* json, const char* key, size_t index) {
+        if (json) {
+            const auto it = json->FindMember(key);
+            if (it != json->MemberEnd()) {
                 const auto& values = it->value;
                 if (values.IsArray() && index < values.Size()) {
                     return T(gltf, &values[index]);
@@ -507,11 +530,10 @@ namespace LAZY_GLTF2_NAMESPACE {
     }
 
     template<typename T>
-    static std::vector<T> getObjectVector(const Gltf* gltf, const char* key) {
+    static std::vector<T> getObjectVector(const Gltf* gltf, const JsonValue* json, const char* key) {
         std::vector<T> vec;
-        const auto* doc = gltf->doc();
-        const auto& it = doc->FindMember(key);
-        if (it != doc->MemberEnd() && it->value.IsArray()) {
+        const auto& it = json->FindMember(key);
+        if (it != json->MemberEnd() && it->value.IsArray()) {
             const auto size = it->value.Size();
             vec.reserve(size);
             for (size_t i = 0; i < size; ++i) {
@@ -522,11 +544,16 @@ namespace LAZY_GLTF2_NAMESPACE {
         return vec;
     }
 
-    static std::vector<const char*> getKeys(const JsonValue* ptr, const char* key) {
+    template<typename T>
+    static std::vector<T> getObjectVector(const Gltf* gltf, const char* key) {
+        return getObjectVector<T>(gltf, gltf->doc(), key);
+    }
+
+    static std::vector<const char*> getKeys(const JsonValue* json, const char* key) {
         std::vector<const char*> vec;
-        if (ptr != nullptr) {
-            auto it = ptr->FindMember(key);
-            if (it != ptr->MemberEnd() && it->value.IsObject()) {
+        if (json != nullptr) {
+            auto it = json->FindMember(key);
+            if (it != json->MemberEnd() && it->value.IsObject()) {
                 auto& value = it->value;
                 const size_t size = value.MemberCount();
                 vec.reserve(size);
@@ -538,13 +565,28 @@ namespace LAZY_GLTF2_NAMESPACE {
         return vec;
     }
 
+    static std::vector<const char*> getStrings(const JsonValue* json, const char* key) {
+        std::vector<const char*> vec;
+        if (json != nullptr) {
+            auto it = json->FindMember(key);
+            if (it != json->MemberEnd() && it->value.IsArray()) {
+                const auto size = it->value.Size();
+                vec.reserve(size);
+                for (size_t i = 0; i < size; ++i) {
+                    vec.push_back(it->value[i].GetString());
+                }
+            }
+        }
+        return vec;
+    }
+
     /// Copys numbers from a json element
     /// @return True if the numbers were copied.
     template<typename T>
-    static bool copyNumbers(const JsonValue* ptr, const char* key, size_t count, T* m) noexcept {
-        if (ptr != nullptr && m != nullptr) {
-            auto it = ptr->FindMember(key);
-            if (it != ptr->MemberEnd() && it->value.IsArray() && count <= it->value.Size()) {
+    static bool copyNumbers(const JsonValue* json, const char* key, size_t count, T* m) noexcept {
+        if (json != nullptr && m != nullptr) {
+            auto it = json->FindMember(key);
+            if (it != json->MemberEnd() && it->value.IsArray() && count <= it->value.Size()) {
                 for (auto& v : it->value.GetArray()) {
                     *m++ = v.Get<T>();
                 }
@@ -554,8 +596,13 @@ namespace LAZY_GLTF2_NAMESPACE {
         return false;
     }
 
+    /// Decodes a base64 string.
+    /// @param[in]  text       The base64 text to decode.
+    /// @param[in]  byteLength The expected number of bytes to read.
+    /// @param[out] data       The vector to copy the data to.
+    /// @return True if the base64 text was decoded successfully; false otherwise.
     template<typename T>
-    static bool readBase64(const char* text, size_t byteLength, std::vector<T>&data) {
+    bool readBase64(const char* text, size_t byteLength, std::vector<T>&data) {
         std::istringstream in(text);
         data.clear();
         data.reserve(byteLength);
@@ -574,8 +621,13 @@ namespace LAZY_GLTF2_NAMESPACE {
         return true;
     }
 
+    /// Reads a binary file and copies the data to the given vector.
+    /// @param[in]  path       The path to the file.
+    /// @param[in]  byteLength The number of bytes to read.
+    /// @param[out] data       The vector to copy the data to.
+    /// @retrun True if the file was loaded successfully; false otherwise.
     template<typename T>
-    static bool readBinaryFile(const char* path, size_t byteLength, std::vector<T>& data) {
+    bool readBinaryFile(const char* path, size_t byteLength, std::vector<T>& data) {
         unique_file_ptr file(fopen(path, "rb"));
         FILE* fp = file.get();
         if (!fp) {
@@ -592,7 +644,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Object {
     public:
         Object() : m_gltf(nullptr), m_json(nullptr) {}
-        Object(const Gltf* gltf, const JsonValue* ptr) : m_gltf(gltf), m_json(ptr) {}
+        Object(const Gltf* gltf, const JsonValue* json) : m_gltf(gltf), m_json(json) {}
         virtual ~Object() {}
         bool isNull() const noexcept { return m_gltf == nullptr; }
         /// Returns true if this Object is not null. (Meaning it is usable)
@@ -679,7 +731,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Named : public Object {
     public:
         Named() {}
-        Named(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+        Named(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
         const char* name() const noexcept {
             return str("name");
         }
@@ -689,7 +741,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Orthographic : public Object {
     public:
         Orthographic() {}
-        Orthographic(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+        Orthographic(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
 
         float xmag() const noexcept {
             return findFloat("xmag");
@@ -709,7 +761,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Perspective : public Object {
     public:
         Perspective() {}
-        Perspective(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+        Perspective(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
 
         float aspectRatio() const noexcept {
             return findFloat("aspectRatio", DEFAULT_ASPECT_RATIO);
@@ -731,7 +783,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Camera : public Named {
     public:
         Camera() {}
-        Camera(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        Camera(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         enum class Type {
             ORTHOGRAPHIC,
@@ -758,10 +810,11 @@ namespace LAZY_GLTF2_NAMESPACE {
         }
     };
 
+    /// A node in the node hierarchy.
     class Node : public Named {
     public:
         Node() {};
-        Node(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        Node(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         Node operator[](size_t index) const noexcept {
             return child(index);
@@ -780,7 +833,7 @@ namespace LAZY_GLTF2_NAMESPACE {
             return count("children");
         }
         std::vector<size_t> children() const noexcept {
-            return getIndexVector<size_t>(m_json, "children");
+            return getNumberVector<size_t>(m_json, "children");
         }
         std::vector<size_t> nodes() const noexcept {
             return children();
@@ -825,10 +878,11 @@ namespace LAZY_GLTF2_NAMESPACE {
         }
     };
 
+    /// The root nodes of a scene.
     class Scene : public Named {
     public:
         Scene() {};
-        Scene(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        Scene(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         Node operator[](size_t index) const noexcept {
             return node(index);
@@ -847,14 +901,14 @@ namespace LAZY_GLTF2_NAMESPACE {
         }
 
         std::vector<size_t> nodes() const noexcept {
-            return getIndexVector<size_t>(m_json, "nodes");
+            return getNumberVector<size_t>(m_json, "nodes");
         }
     };
 
     class Buffer : public Named {
     public:
         Buffer() {}
-        Buffer(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        Buffer(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         /// Returns the uri string. May be null because GLB buffers don't have a uri.
         const char* uri() const noexcept {
@@ -872,10 +926,11 @@ namespace LAZY_GLTF2_NAMESPACE {
         bool load(std::vector<T>& data) const noexcept;
     };
 
+    /// A view into a buffer generally representing a subset of the buffer.
     class BufferView : public Named {
     public:
         BufferView() {}
-        BufferView(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        BufferView(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         enum Target {
             ARRAY_BUFFER = 34962,
@@ -903,6 +958,7 @@ namespace LAZY_GLTF2_NAMESPACE {
         }
 
         /// Target is not a required field so you might want to call hasTarget() first.
+        /// Will return Target::ARRAY_BUFFER if the target is not found.
         Target target() const noexcept {
             int num;
             if (findNumber<int>(m_json, "target", num)) {
@@ -929,7 +985,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class SparseValues : public Object {
     public:
         SparseValues() {}
-        SparseValues(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+        SparseValues(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
 
         BufferView bufferView() const noexcept {
             size_t index;
@@ -947,7 +1003,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class SparseIndices : public Object {
     public:
         SparseIndices() {}
-        SparseIndices(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+        SparseIndices(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
 
         enum class ComponentType {
             UNSIGNED_BYTE = 5121,
@@ -983,7 +1039,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Sparse : public Object {
     public:
         Sparse() {}
-        Sparse(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+        Sparse(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
 
         size_t count() const noexcept {
             return findNumberOrDefault<size_t>(m_json, "count", 1);
@@ -1001,7 +1057,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Accessor : public Named {
     public:
         Accessor() {}
-        Accessor(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        Accessor(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         enum class Type {
             SCALAR,
@@ -1084,6 +1140,9 @@ namespace LAZY_GLTF2_NAMESPACE {
         float max(size_t index) const noexcept {
             return findNumberOrDefault(m_json, "max", index, 0.0f);
         }
+        std::vector<float> max() const noexcept {
+            return getNumberVector<float>(m_json, "max");
+        }
         size_t maxCount() const noexcept {
             return Object::count("max");
         }
@@ -1092,6 +1151,9 @@ namespace LAZY_GLTF2_NAMESPACE {
         }
         float min(size_t index) const noexcept {
             return findNumberOrDefault(m_json, "min", index, 0.0f);
+        }
+        std::vector<float> min() const noexcept {
+            return getNumberVector<float>(m_json, "min");
         }
         size_t minCount() const noexcept {
             return Object::count("min");
@@ -1118,13 +1180,13 @@ namespace LAZY_GLTF2_NAMESPACE {
             return str("minVersion");
         }
     private:
-        Asset(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+        Asset(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
     };
 
     class Image : public Named {
     public:
         Image() {}
-        Image(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        Image(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         const char* uri() const noexcept {
             return str("uri");
@@ -1142,12 +1204,19 @@ namespace LAZY_GLTF2_NAMESPACE {
         bool bufferView(size_t& index) const noexcept {
             return findNumber(m_json, "bufferView", index);
         }
+        bool isBase64() const {
+            const char* s = uri();
+            return startsWith(s, LAZY_GLTF2_DATA_IMAGE_JPG) || startsWith(s, LAZY_GLTF2_DATA_IMAGE_PNG);
+        }
+        template<typename T>
+        bool loadBase64(std::vector<T>& data);
     };
 
+    /// Texture sampler
     class Sampler : public Named {
     public:
         Sampler() {}
-        Sampler(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        Sampler(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         enum class Wrap {
             REPEAT = 10497,
@@ -1219,7 +1288,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Texture : public Named {
     public:
         Texture() {}
-        Texture(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        Texture(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         /// Returns the Image used by this texture. This method name is more obvious.
         Image image() const noexcept {
@@ -1257,7 +1326,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class TextureInfo : public Object {
     public:
         TextureInfo() {}
-        TextureInfo(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+        TextureInfo(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
 
         /// Returns the texture instead of having to use index().
         Texture texture() const noexcept {
@@ -1284,7 +1353,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Skin : public Named {
     public:
         Skin() {}
-        Skin(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        Skin(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         Accessor inverseBindMatrices() const noexcept {
             size_t num;
@@ -1318,14 +1387,14 @@ namespace LAZY_GLTF2_NAMESPACE {
             return count("joints");
         }
         std::vector<size_t> joints() const noexcept {
-            return getIndexVector<size_t>(m_json, "joints");
+            return getNumberVector<size_t>(m_json, "joints");
         }
     };
 
     class NormalTextureInfo : public TextureInfo {
     public:
         NormalTextureInfo() {}
-        NormalTextureInfo(const Gltf* gltf, const JsonValue* ptr) : TextureInfo(gltf, ptr) {}
+        NormalTextureInfo(const Gltf* gltf, const JsonValue* json) : TextureInfo(gltf, json) {}
 
         float scale() const noexcept {
             return findFloat("scale", 1.0f);
@@ -1335,7 +1404,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class PbrMetallicRoughness : public Object {
     public:
         PbrMetallicRoughness() {}
-        PbrMetallicRoughness(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+        PbrMetallicRoughness(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
 
         /// Copies 4 floats to the given pointer.
         bool baseColorFactor(float* color) const noexcept {
@@ -1347,6 +1416,13 @@ namespace LAZY_GLTF2_NAMESPACE {
                 std::fill(color, color + 4, 1.0f);
             }
             return true;
+        }
+        std::array<float, 4> baseColorFactor() const noexcept {
+            std::array<float, 4> v;
+            if (!baseColorFactor(v.data())) {
+                v.fill(1.0f);
+            }
+            return v;
         }
         TextureInfo baseColorTexture() const noexcept {
             return findObject<TextureInfo>(m_gltf, m_json, "baseColorTexture");
@@ -1365,7 +1441,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class OcclusionTextureInfo : public TextureInfo {
     public:
         OcclusionTextureInfo() {}
-        OcclusionTextureInfo(const Gltf* gltf, const JsonValue* ptr) : TextureInfo(gltf, ptr) {}
+        OcclusionTextureInfo(const Gltf* gltf, const JsonValue* json) : TextureInfo(gltf, json) {}
 
         float strength() const noexcept {
             return findFloat("strength", 1.0f);
@@ -1375,7 +1451,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Material : public Named {
     public:
         Material() {}
-        Material(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        Material(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         enum class AlphaMode {
             OPAQUE,
@@ -1398,6 +1474,15 @@ namespace LAZY_GLTF2_NAMESPACE {
         bool emissiveFactor(float* emissive) const noexcept {
             return copyFloats("emissiveFactor", 3, emissive);
         }
+
+        std::array<float, 3> emissiveFactor() const noexcept {
+            std::array<float, 3> v;
+            if (!emissiveFactor(v.data())) {
+                v.fill(0.0f);
+            }
+            return v;
+        }
+
         AlphaMode alphaMode() const noexcept {
             const char* s = str("alphaMode");
             if (s != nullptr) {
@@ -1419,7 +1504,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class MorphTarget : public Object {
     public:
         MorphTarget() {}
-        MorphTarget(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+        MorphTarget(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
 
         size_t position() const noexcept {
             return findNumberOrDefault(m_json, "POSITION", 0);
@@ -1435,7 +1520,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Primitive : public Object {
     public:
         Primitive() {}
-        Primitive(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+        Primitive(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
 
         enum class Mode {
             POINTS = 0,
@@ -1561,7 +1646,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Mesh : public Named {
     public:
         Mesh() {}
-        Mesh(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        Mesh(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         Primitive primitive(size_t index) const noexcept {
             return findObject<Primitive>(m_gltf, m_json, "primitives", index);
@@ -1570,6 +1655,8 @@ namespace LAZY_GLTF2_NAMESPACE {
         Primitive operator[](size_t index) const noexcept {
             return primitive(index);
         }
+
+        std::vector<Primitive> primitives() const noexcept;
 
         size_t primitiveCount() const noexcept {
             return count("primitives");
@@ -1591,7 +1678,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class AnimationSampler : public Object {
     public:
         AnimationSampler() {}
-        AnimationSampler(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+        AnimationSampler(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
 
         Accessor input() const noexcept {
             size_t index;
@@ -1632,12 +1719,12 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Channel : public Object {
     public:
         Channel() {}
-        Channel(const Gltf* gltf, const JsonValue* ptr, const JsonValue* animation) : Object(gltf, ptr), animation(animation) {}
+        Channel(const Gltf* gltf, const JsonValue* json, const JsonValue* animation) : Object(gltf, json), animation(animation) {}
 
         class Target : public Object {
         public:
             Target() {}
-            Target(const Gltf* gltf, const JsonValue* ptr) : Object(gltf, ptr) {}
+            Target(const Gltf* gltf, const JsonValue* json) : Object(gltf, json) {}
 
             Node node() const noexcept {
                 size_t index;
@@ -1685,13 +1772,13 @@ namespace LAZY_GLTF2_NAMESPACE {
     };
 
     // TODO move this?
-    static Channel findChannel(const Gltf* gltf, const JsonValue* ptr, size_t index) {
-        if (ptr != nullptr) {
-            auto it = ptr->FindMember("channels");
-            if (it != ptr->MemberEnd() && it->value.IsArray() && index < it->value.Size()) {
+    static Channel findChannel(const Gltf* gltf, const JsonValue* json, size_t index) {
+        if (json != nullptr) {
+            auto it = json->FindMember("channels");
+            if (it != json->MemberEnd() && it->value.IsArray() && index < it->value.Size()) {
                 const auto& v = it->value[index];
                 if (v.IsObject()) {
-                    return Channel(gltf, &v, ptr);
+                    return Channel(gltf, &v, json);
                 }
             }
         }
@@ -1701,7 +1788,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     class Animation : public Named {
     public:
         Animation() {}
-        Animation(const Gltf* gltf, const JsonValue* ptr) : Named(gltf, ptr) {}
+        Animation(const Gltf* gltf, const JsonValue* json) : Named(gltf, json) {}
 
         Channel channel(size_t index) const noexcept {
             return findChannel(m_gltf, m_json, index);
@@ -1908,6 +1995,14 @@ namespace LAZY_GLTF2_NAMESPACE {
         return findByName<Material>("materials", name);
     }
 
+    inline std::vector<const char*> Gltf::extensionsRequired() const noexcept {
+        return getStrings(doc(), "extensionsRequired");
+    }
+
+    inline std::vector<const char*> Gltf::extensionsUsed() const noexcept {
+        return getStrings(doc(), "extensionsUsed");
+    }
+
     inline bool Gltf::loadGlbMetaData(const char* path) {
         unique_file_ptr file(fopen(path, "rb"));
         FILE* fp = file.get();
@@ -2020,10 +2115,31 @@ namespace LAZY_GLTF2_NAMESPACE {
         else {
             // TODO make sure this is a local file URI
             // external bin
-            std::string path = m_gltf->m_baseDir + uriStr;
+            std::string path = m_gltf->baseDir() + uriStr;
             return readBinaryFile(path.c_str(), byteLength(), data);
         }
     }
-}
+
+    template<typename T>
+    bool Image::loadBase64(std::vector<T>& data) {
+        const char* text = uri();
+        if (startsWith(text, LAZY_GLTF2_DATA_IMAGE_JPG)) {
+            text += sizeof(LAZY_GLTF2_DATA_IMAGE_JPG) - 1;
+        }
+        else if (startsWith(text, LAZY_GLTF2_DATA_IMAGE_PNG)) {
+            text += sizeof(LAZY_GLTF2_DATA_IMAGE_PNG) - 1;
+        }
+        else {
+            return false;
+        }
+        // the data will be roughly 75% the size of the base64 text
+        const size_t byteLength = strlen(text) * 3 >> 2;
+        return readBase64(text, byteLength, data);
+    }
+
+    inline std::vector<Primitive> Mesh::primitives() const noexcept {
+        return getObjectVector<Primitive>(m_gltf, m_json, "primitives");
+    }
+} // namespace LAZY_GLTF2_NAMESPACE
 
 #endif // LAZY_GLTF2_HPP
