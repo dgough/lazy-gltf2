@@ -44,17 +44,27 @@ int main() {
     auto image = gltf.mesh(2).primitive(0).material().pbrMetallicRoughness().baseColorTexture().texture().image();
     // the resulting image object will return false when used in an if statement if it wasn't found
     if (image) {
+        // image data can be stored in external file, an embedded base64 encoding or in the GLB chunk
         if (const char* uri = image.uri()) {
-            // image is in an external file
-            std::string imagePath = gltf.baseDir() + image.uri();
-            // image loading API not included
-            // Image::createFromFile(imagePath.c_str());
+            if (image.isBase64()) {
+                // image is embedded base64
+                std::vector<unsigned char> imageData;
+                if (image.loadBase64(imageData)) {
+                    // Image::createFromFileMemory(imageData.data(), static_cast<int>(imageData.size()));
+                }
+            }
+            else {
+                // image is in an external file
+                std::string imagePath = gltf.baseDir() + image.uri();
+                // image loading API not included
+                // Image::createFromFile(imagePath.c_str());
+            }
         }
         else if (auto bufferView = image.bufferView()) {
-            // image is in the GLB chunk
-            std::vector<unsigned char> imageData;
-            if (bufferView.buffer().load(imageData)) {
-                // Image::createFromFileMemory(imageData.data(), imageData.size());
+            // image is in the GLB chunk. You might want to cache the buffer because you're going to read from it multiple times.
+            std::vector<unsigned char> buffer;
+            if (bufferView.buffer().load(buffer)) {
+                // Image::createFromFileMemory(imageData.data() + bufferView.byteOffset(), bufferView.byteLength());
             }
         }
     }
