@@ -141,7 +141,6 @@ void testBoxCommon(Gltf& gltf) {
         EXPECT_TRUE(bufferView.buffer());
         EXPECT_EQ(576, bufferView.byteOffset());
         EXPECT_EQ(72, bufferView.byteLength());
-        EXPECT_TRUE(bufferView.hasTarget());
         EXPECT_EQ(BufferView::Target::ELEMENT_ARRAY_BUFFER, bufferView.target());
 
         size_t index;
@@ -155,7 +154,6 @@ void testBoxCommon(Gltf& gltf) {
         EXPECT_EQ(0, bufferView.byteOffset());
         EXPECT_EQ(576, bufferView.byteLength());
         EXPECT_EQ(12, bufferView.byteStride());
-        EXPECT_TRUE(bufferView.hasTarget());
         EXPECT_EQ(BufferView::Target::ARRAY_BUFFER, bufferView.target());
     }
     // animations
