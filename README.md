@@ -133,5 +133,5 @@ I use this API to load glTF 2.0 files in my engine:
 
 ## References
 
-- [glTf 2.0 specification](https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md)
+- [glTF 2.0 specification](https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md)
 - [glTF 2.0 sample models](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0)

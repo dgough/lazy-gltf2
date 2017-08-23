@@ -9,12 +9,40 @@ using namespace gltf2;
 static const char* BOOMBOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/BoomBox/glTF/BoomBox.gltf";
 static const char* BOOMBOX_BINARY_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/BoomBox/glTF-Binary/BoomBox.glb";
 
+TEST(gltf, emptyGltf) {
+    Gltf gltf;
+    EXPECT_TRUE(gltf == nullptr);
+    EXPECT_TRUE(nullptr == gltf);
+    EXPECT_FALSE(gltf != nullptr);
+    EXPECT_FALSE(nullptr != gltf);
+
+    Node node;
+    EXPECT_TRUE(node == nullptr);
+    EXPECT_TRUE(nullptr == node);
+    EXPECT_FALSE(node != nullptr);
+    EXPECT_FALSE(nullptr != node);
+
+    EXPECT_TRUE(node == Node());
+    EXPECT_FALSE(node != Node());
+}
+
 TEST(gltf, boombox) {
     Gltf gltf(BOOMBOX_PATH);
     EXPECT_TRUE(gltf);
+    EXPECT_FALSE(gltf == nullptr);
+    EXPECT_FALSE(nullptr == gltf);
+    EXPECT_TRUE(gltf != nullptr);
+    EXPECT_TRUE(nullptr != gltf);
 
     auto occ = gltf.material(0).occlusionTexture();
     EXPECT_TRUE(occ);
+    EXPECT_FALSE(occ == nullptr);
+    EXPECT_FALSE(nullptr == occ);
+    EXPECT_TRUE(occ != nullptr);
+    EXPECT_TRUE(nullptr != occ);
+    EXPECT_FALSE(occ == OcclusionTextureInfo());
+    EXPECT_TRUE(occ != OcclusionTextureInfo());
+
     EXPECT_EQ(1.0f, occ.strength());
     EXPECT_EQ(1, occ.index());
     EXPECT_TRUE(occ.texture());

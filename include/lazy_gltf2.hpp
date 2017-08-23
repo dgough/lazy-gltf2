@@ -341,9 +341,20 @@ namespace LAZY_GLTF2_NAMESPACE {
     inline bool operator==(const Gltf& lhs, const Gltf& rhs) {
         return lhs.m_doc == rhs.m_doc && lhs.m_glb == rhs.m_glb && lhs.m_baseDir == rhs.m_baseDir;
     }
-
     inline bool operator!=(const Gltf& lhs, const Gltf& rhs) {
         return !(lhs == rhs);
+    }
+    inline bool operator==(const Gltf& lhs, std::nullptr_t) noexcept {
+        return !lhs;
+    }
+    inline bool operator==(std::nullptr_t, const Gltf& rhs) noexcept {
+        return !rhs;
+    }
+    inline bool operator!=(const Gltf& lhs, std::nullptr_t) noexcept {
+        return lhs;
+    }
+    inline bool operator!=(std::nullptr_t, const Gltf& rhs) noexcept {
+        return rhs;
     }
 
     // functions
@@ -722,9 +733,20 @@ namespace LAZY_GLTF2_NAMESPACE {
     inline bool operator==(const Object& lhs, const Object& rhs) {
         return lhs.m_gltf == rhs.m_gltf && lhs.m_json == rhs.m_json;
     }
-
     inline bool operator!=(const Object& lhs, const Object& rhs) {
         return !(lhs == rhs);
+    }
+    inline bool operator==(const Object& lhs, std::nullptr_t) noexcept {
+        return !lhs;
+    }
+    inline bool operator==(std::nullptr_t, const Object& rhs) noexcept {
+        return !rhs;
+    }
+    inline bool operator!=(const Object& lhs, std::nullptr_t) noexcept {
+        return lhs;
+    }
+    inline bool operator!=(std::nullptr_t, const Object& rhs) noexcept {
+        return rhs;
     }
 
     /// A gltf object that has a string name.
