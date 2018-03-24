@@ -656,7 +656,7 @@ namespace LAZY_GLTF2_NAMESPACE {
     public:
         Object() : m_gltf(nullptr), m_json(nullptr) {}
         Object(const Gltf* gltf, const JsonValue* json) : m_gltf(gltf), m_json(json) {}
-        virtual ~Object() {}
+        virtual ~Object() = default;
         bool isNull() const noexcept { return m_gltf == nullptr; }
         /// Returns true if this Object is not null. (Meaning it is usable)
         operator bool() const noexcept { return m_gltf != nullptr; }
@@ -1163,7 +1163,7 @@ namespace LAZY_GLTF2_NAMESPACE {
             return Object::count("max");
         }
         bool min(float* p, size_t count) const noexcept {
-            return copyFloats("max", count, p);
+            return copyFloats("min", count, p);
         }
         float min(size_t index) const noexcept {
             return findNumberOrDefault(m_json, "min", index, 0.0f);

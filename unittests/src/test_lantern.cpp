@@ -58,9 +58,9 @@ TEST(gltf, lantern) {
 
         std::array<float, 3> min;
         position.min(min.data(), min.size());
-        EXPECT_FLOAT_EQ(7.74559927f, min[0]);
-        EXPECT_FLOAT_EQ(12.8321095f, min[1]);
-        EXPECT_FLOAT_EQ(2.31570983f, min[2]);
+        EXPECT_FLOAT_EQ(-7.74559927f, min[0]);
+        EXPECT_FLOAT_EQ(-12.8321095f, min[1]);
+        EXPECT_FLOAT_EQ(-2.31570983f, min[2]);
     }
 
     // indices
@@ -90,12 +90,6 @@ TEST(gltf, lantern) {
     EXPECT_TRUE(roughness);
     EXPECT_EQ(1.0f, roughness.metallicFactor());
     EXPECT_EQ(1.0f, roughness.roughnessFactor());
-    {
-        std::array<float, 4> expected = { 0.214041144f, 0.214041144f, 0.214041144f, 1.0f };
-        std::array<float, 4> actual;
-        roughness.baseColorFactor(actual.data());
-        EXPECT_EQ(expected, actual);
-    }
     {
         auto baseColorTextureInfo = roughness.baseColorTexture();
         EXPECT_TRUE(baseColorTextureInfo);

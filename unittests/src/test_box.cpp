@@ -10,7 +10,7 @@ static const char* BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF/Box.gltf
 static const char* BINARY_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-Binary/Box.glb";
 static const char* BASE64_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-Embedded/Box.gltf";
 static const char* PBR_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-pbrSpecularGlossiness/Box.gltf";
-static const char* MAT_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-MaterialsCommon/Box.gltf";
+static const char* DARCO_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-Draco/Box.gltf";
 
 void testBoxCommon(Gltf& gltf) {
     // counts
@@ -261,20 +261,20 @@ TEST(gltf, compare_buffers) {
 
 TEST(gltf, box_pbr) {
     Gltf gltf(PBR_BOX_PATH);
-    EXPECT_TRUE(gltf);
+    ASSERT_TRUE(gltf);
     auto extensionsUsed = gltf.extensionsUsed();
     EXPECT_EQ(1, extensionsUsed.size());
     EXPECT_STREQ("KHR_materials_pbrSpecularGlossiness", extensionsUsed[0]);
 }
 
-TEST(gltf, box_mat) {
+TEST(gltf, box_darco) {
     Gltf gltf;
-    EXPECT_TRUE(gltf.load(MAT_BOX_PATH));
+    ASSERT_TRUE(gltf.load(DARCO_BOX_PATH));
     auto extensionsUsed = gltf.extensionsUsed();
-    EXPECT_EQ(1, extensionsUsed.size());
-    EXPECT_STREQ("KHR_materials_common", extensionsUsed[0]);
+    ASSERT_EQ(1, extensionsUsed.size());
+    EXPECT_STREQ("KHR_draco_mesh_compression", extensionsUsed[0]);
 
     auto extensionsRequired = gltf.extensionsRequired();
     EXPECT_EQ(1, extensionsRequired.size());
-    EXPECT_STREQ("KHR_materials_common", extensionsRequired[0]);
+    EXPECT_STREQ("KHR_draco_mesh_compression", extensionsRequired[0]);
 }

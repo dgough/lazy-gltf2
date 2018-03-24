@@ -65,7 +65,12 @@ TEST(gltf, monster) {
 
     // animations
     {
-        EXPECT_EQ(32, gltf.animationCount());
+        EXPECT_EQ(1, gltf.animationCount());
+        auto animation = gltf.animation(0);
+        size_t channelCount = animation.channelCount();
+        EXPECT_GE(96U, channelCount);
+        auto animation2 = gltf.animation(1);
+        EXPECT_FALSE(animation2);
     }
 
     // images
