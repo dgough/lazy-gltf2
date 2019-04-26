@@ -27,9 +27,9 @@ TEST(gltf, compare_ducks) {
     auto b3 = base64Duck.buffer(0);
     EXPECT_TRUE(b3);
 
-    auto length1 = b1.byteLength();
-    auto length2 = b2.byteLength();
-    auto length3 = b3.byteLength();
+	EXPECT_GT(b1.byteLength(), 0U);
+	EXPECT_GT(b2.byteLength(), 0U);
+	EXPECT_GT(b3.byteLength(), 0U);
 
     std::vector<unsigned char> v1;
     std::vector<unsigned char> v2;

@@ -9,7 +9,6 @@ using namespace gltf2;
 static const char* BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF/Box.gltf";
 static const char* BINARY_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-Binary/Box.glb";
 static const char* BASE64_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-Embedded/Box.gltf";
-static const char* PBR_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-pbrSpecularGlossiness/Box.gltf";
 static const char* DARCO_BOX_PATH = LAZY_GLTF2_BASE_SAMPLE_DIR "/2.0/Box/glTF-Draco/Box.gltf";
 
 void testBoxCommon(Gltf& gltf) {
@@ -257,14 +256,6 @@ TEST(gltf, compare_buffers) {
     EXPECT_NE(g1, g2);
     EXPECT_NE(g1, g3);
     EXPECT_NE(g1, Gltf());
-}
-
-TEST(gltf, box_pbr) {
-    Gltf gltf(PBR_BOX_PATH);
-    ASSERT_TRUE(gltf);
-    auto extensionsUsed = gltf.extensionsUsed();
-    EXPECT_EQ(1, extensionsUsed.size());
-    EXPECT_STREQ("KHR_materials_pbrSpecularGlossiness", extensionsUsed[0]);
 }
 
 TEST(gltf, box_darco) {
